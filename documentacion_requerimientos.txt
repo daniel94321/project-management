@@ -1,0 +1,1472 @@
+================================================================================
+       SISTEMA DE GESTIÓN DE PROYECTOS — DOCUMENTACIÓN DE REQUERIMIENTOS
+================================================================================
+
+  Asignatura   : Ingeniería de Software / Desarrollo de Aplicaciones Web
+  Proyecto     : Sistema de Gestión de Proyectos (Project Management System)
+  Fecha        : Febrero 2026
+  Versión      : 1.0.0
+
+================================================================================
+                               TABLA DE CONTENIDOS
+================================================================================
+
+  1. Introducción del Sistema
+     1.1 Propósito
+     1.2 Alcance
+     1.3 Definiciones, Acrónimos y Abreviaturas
+     1.4 Contexto del Sistema
+     1.5 Visión General del Documento
+
+  2. Requerimientos Funcionales
+     2.1 Módulo de Autenticación
+     2.2 Módulo de Gestión de Usuarios
+     2.3 Módulo de Roles y Permisos
+     2.4 Módulo de Panel de Control (Dashboard)
+     2.5 Módulos Futuros Previstos
+
+  3. Requerimientos No Funcionales
+     3.1 Seguridad
+     3.2 Rendimiento
+     3.3 Escalabilidad
+     3.4 Mantenibilidad
+     3.5 Usabilidad
+     3.6 Disponibilidad
+     3.7 Compatibilidad
+
+  4. Tecnologías Utilizadas
+     4.1 Stack Tecnológico General
+     4.2 Backend
+     4.3 Frontend
+     4.4 Base de Datos
+     4.5 Herramientas de Desarrollo
+     4.6 Dependencias Externas
+
+  5. Arquitectura del Sistema
+     5.1 Estilo Arquitectónico
+     5.2 Diagrama de Capas
+     5.3 Arquitectura del Backend (Laravel 11)
+     5.4 Arquitectura del Frontend (Vue 3)
+     5.5 Diagrama de Base de Datos
+     5.6 Diagrama de Flujo de Autenticación
+     5.7 Diagrama de Flujo de Autorización
+     5.8 Endpoints de la API REST
+     5.9 Patrones de Diseño Aplicados
+     5.10 Estrategia de Seguridad
+
+================================================================================
+  CAPÍTULO 1 — INTRODUCCIÓN DEL SISTEMA
+================================================================================
+
+1.1 PROPÓSITO
+────────────────────────────────────────────────────────────────────────────────
+
+  El presente documento tiene como propósito describir formalmente los
+  requerimientos funcionales y no funcionales del Sistema de Gestión de
+  Proyectos (en adelante, "el Sistema"), así como documentar las decisiones
+  de arquitectura, tecnología y diseño que fundamentan su implementación.
+
+  Este documento está dirigido a:
+    - Desarrolladores responsables de la implementación y mantenimiento.
+    - Evaluadores académicos encargados de revisar la propuesta técnica.
+    - Partes interesadas que requieran entender el alcance y capacidades del
+      Sistema.
+
+  La documentación sigue lineamientos inspirados en el estándar IEEE 830-1998
+  para la especificación de requerimientos de software.
+
+
+1.2 ALCANCE
+────────────────────────────────────────────────────────────────────────────────
+
+  El Sistema de Gestión de Proyectos es una aplicación web empresarial
+  diseñada para centralizar la administración de proyectos, tareas, equipos
+  de trabajo y usuarios dentro de una organización.
+
+  La fase inicial (v1.0.0) contempla:
+
+    a) Sistema de autenticación seguro basado en sesiones SPA.
+    b) Gestión completa de usuarios (altas, bajas, consultas y modificaciones).
+    c) Sistema de roles y permisos granulares.
+    d) Panel de control con información contextual al usuario autenticado.
+
+  Las siguientes funcionalidades se encuentran previstas en la arquitectura
+  actual pero serán implementadas en fases posteriores:
+
+    - Gestión de Proyectos.
+    - Gestión de Tareas.
+    - Gestión de Equipos de Trabajo.
+    - Reportes y métricas de productividad.
+
+  El Sistema NO incluye en su alcance actual:
+
+    - Integración con sistemas externos de terceros.
+    - Aplicaciones móviles nativas.
+    - Módulo de facturación o pagos.
+
+
+1.3 DEFINICIONES, ACRÓNIMOS Y ABREVIATURAS
+────────────────────────────────────────────────────────────────────────────────
+
+  Término            Definición
+  ─────────────────  ──────────────────────────────────────────────────────────
+  API                Application Programming Interface — Interfaz de
+                     Programación de Aplicaciones.
+  REST               Representational State Transfer — Estilo arquitectónico
+                     para servicios web.
+  SPA                Single Page Application — Aplicación de página única.
+  CSRF               Cross-Site Request Forgery — Ataque de falsificación de
+                     solicitudes entre sitios.
+  CORS               Cross-Origin Resource Sharing — Mecanismo de seguridad
+                     que controla el acceso a recursos entre dominios.
+  JWT                JSON Web Token — Estándar para tokens de autenticación.
+  ORM                Object-Relational Mapping — Mapeo Objeto-Relacional.
+  UUID               Universally Unique Identifier — Identificador único
+                     universal de 128 bits.
+  RBAC               Role-Based Access Control — Control de acceso basado
+                     en roles.
+  DTO                Data Transfer Object — Objeto para transferencia de datos.
+  MVC                Model-View-Controller — Patrón de arquitectura de software.
+  Sanctum            Paquete oficial de Laravel para autenticación SPA/API.
+  Spatie             Empresa belga autora del paquete laravel-permission.
+  Pinia              Gestor de estado oficial para Vue 3.
+  Vite               Herramienta de construcción (build tool) para proyectos
+                     web modernos.
+  Eloquent           ORM oficial de Laravel.
+  Middleware         Componente de software que intercepta solicitudes HTTP.
+
+
+1.4 CONTEXTO DEL SISTEMA
+────────────────────────────────────────────────────────────────────────────────
+
+  El Sistema opera bajo un modelo de arquitectura desacoplada (decoupled
+  architecture), donde el backend y el frontend son aplicaciones independientes
+  que se comunican exclusivamente mediante una API REST:
+
+    ┌─────────────────────┐         ┌─────────────────────┐
+    │   Vue 3 SPA         │  HTTP   │   Laravel 11 API    │
+    │   Puerto: 5173      │ ◄─────► │   Puerto: 8000      │
+    │   (Frontend)        │  JSON   │   (Backend)         │
+    └─────────────────────┘         └─────────────────────┘
+                                              │
+                                              ▼
+                                    ┌─────────────────────┐
+                                    │   MySQL Database    │
+                                    │   Puerto: 3306      │
+                                    └─────────────────────┘
+
+  El backend (Laravel 11) actúa exclusivamente como proveedor de API REST,
+  exponiendo endpoints bajo el prefijo /api/v1/. El frontend (Vue 3) consume
+  estos endpoints y gestiona toda la interfaz de usuario de forma autónoma.
+
+  La autenticación utiliza el mecanismo de cookies de sesión provisto por
+  Laravel Sanctum en modo SPA, el cual ofrece protección CSRF nativa y
+  manejo transparente de sesiones sin requerir tokens explícitos en las
+  cabeceras de las peticiones.
+
+
+1.5 VISIÓN GENERAL DEL DOCUMENTO
+────────────────────────────────────────────────────────────────────────────────
+
+  Los capítulos subsiguientes se organizan de la siguiente manera:
+
+  - Capítulo 2: Detalla cada requerimiento funcional del Sistema, organizado
+    por módulos.
+
+  - Capítulo 3: Describe los atributos de calidad que el Sistema debe cumplir
+    más allá de su funcionalidad básica.
+
+  - Capítulo 4: Enumera y justifica la selección de tecnologías, frameworks
+    y dependencias empleadas.
+
+  - Capítulo 5: Expone las decisiones de arquitectura, diagramas, patrones
+    de diseño y estrategias de seguridad implementadas.
+
+
+================================================================================
+  CAPÍTULO 2 — REQUERIMIENTOS FUNCIONALES
+================================================================================
+
+  Los requerimientos funcionales describen los comportamientos, servicios y
+  funciones que el Sistema debe proveer. Cada requerimiento se identifica
+  mediante el formato RF-XX, donde XX es un número secuencial.
+
+  Escala de prioridad:
+    [ALTA]   — Indispensable para el funcionamiento del Sistema.
+    [MEDIA]  — Importante, pero el Sistema puede operar sin ello inicialmente.
+    [BAJA]   — Deseable; corresponde a mejoras o funcionalidades futuras.
+
+
+────────────────────────────────────────────────────────────────────────────────
+2.1 MÓDULO DE AUTENTICACIÓN
+────────────────────────────────────────────────────────────────────────────────
+
+  RF-01  Inicio de Sesión                                              [ALTA]
+  ───────────────────────────────────────────────────────────────────────────
+  Descripción:
+    El Sistema debe permitir que los usuarios registrados inicien sesión
+    proporcionando su dirección de correo electrónico y contraseña.
+
+  Entradas:
+    - email         : Correo electrónico válido (formato RFC 5322).
+    - password      : Contraseña en texto plano (mínimo 8 caracteres).
+    - remember      : Indicador booleano para sesión persistente (opcional).
+
+  Proceso:
+    1. El frontend solicita el token CSRF al endpoint /sanctum/csrf-cookie.
+    2. Se envían las credenciales mediante POST /api/v1/auth/login.
+    3. El backend valida el formato mediante LoginRequest.
+    4. Se verifica la correspondencia de credenciales contra la base de datos.
+    5. Se comprueba que el estado del usuario sea "active".
+    6. Se actualiza el campo last_login_at con la marca temporal actual.
+    7. Se regenera el identificador de sesión.
+    8. Se retorna la información del usuario con sus roles y permisos.
+
+  Salidas:
+    - Sesión establecida mediante cookie segura.
+    - Objeto JSON con datos del usuario, roles y permisos asignados.
+
+  Restricciones:
+    - Máximo 5 intentos de inicio de sesión por minuto por dirección IP.
+    - Los usuarios con estado "inactive" o "suspended" no pueden autenticarse.
+    - La contraseña no se retorna en ninguna respuesta de la API.
+
+  Errores posibles:
+    - HTTP 422: Credenciales incorrectas o campos de validación inválidos.
+    - HTTP 429: Límite de intentos por minuto excedido.
+
+
+  RF-02  Cierre de Sesión                                             [ALTA]
+  ───────────────────────────────────────────────────────────────────────────
+  Descripción:
+    El Sistema debe permitir que los usuarios autenticados cierren su sesión
+    de forma segura.
+
+  Proceso:
+    1. El frontend envía POST /api/v1/auth/logout con la cookie de sesión.
+    2. El backend invalida la sesión del servidor.
+    3. Se regenera el token CSRF.
+    4. El frontend elimina el estado de autenticación del store de Pinia.
+    5. El router redirige al usuario a la pantalla de inicio de sesión.
+
+  Restricciones:
+    - El endpoint solo es accesible para usuarios autenticados.
+
+
+  RF-03  Obtención del Usuario Autenticado                            [ALTA]
+  ───────────────────────────────────────────────────────────────────────────
+  Descripción:
+    El Sistema debe proveer un endpoint que retorne los datos completos del
+    usuario actualmente autenticado, incluyendo sus roles y permisos.
+
+  Proceso:
+    1. GET /api/v1/auth/me validado con middleware auth:sanctum.
+    2. Se cargan las relaciones roles y roles.permissions de forma eficiente.
+    3. Se retorna el objeto usuario transformado mediante UserResource.
+
+  Uso principal:
+    - Inicialización del estado de autenticación al cargar la SPA.
+    - Refresco de permisos tras cambios administrativos.
+
+
+  RF-04  Protección de Rutas del Frontend                             [ALTA]
+  ───────────────────────────────────────────────────────────────────────────
+  Descripción:
+    El router de la SPA debe proteger las rutas privadas e impedir el acceso
+    a rutas exclusivas de invitados cuando el usuario está autenticado.
+
+  Comportamiento:
+    a) Rutas protegidas (requiresAuth: true):
+       - Si el usuario no está autenticado, redirige a /login.
+       - La URL solicitada se preserva como parámetro "redirect".
+
+    b) Rutas de invitado (guest: true):
+       - Si el usuario ya está autenticado, redirige a /dashboard.
+
+    c) Rutas con permiso requerido (permission: 'nombre.permiso'):
+       - Si el usuario carece del permiso, redirige al dashboard.
+
+  Proceso técnico:
+    - La guarda de navegación beforeEach inicializa el estado de auth en la
+      primera navegación si aún no ha sido inicializado.
+
+
+────────────────────────────────────────────────────────────────────────────────
+2.2 MÓDULO DE GESTIÓN DE USUARIOS
+────────────────────────────────────────────────────────────────────────────────
+
+  RF-05  Listado de Usuarios                                          [ALTA]
+  ───────────────────────────────────────────────────────────────────────────
+  Descripción:
+    El Sistema debe permitir listar todos los usuarios registrados con
+    soporte de filtros, búsqueda, ordenamiento y paginación.
+
+  Permiso requerido: users.view
+
+  Parámetros de consulta disponibles:
+    - search          : Búsqueda por nombre o correo electrónico (LIKE).
+    - status          : Filtro por estado: active, inactive, suspended.
+    - role            : Filtro por nombre de rol asignado.
+    - sort_by         : Campo de ordenamiento: created_at, name, email, status.
+    - sort_direction  : Dirección: asc, desc.
+    - per_page        : Cantidad de registros por página (default: 15).
+    - page            : Número de página actual.
+
+  Respuesta:
+    - Colección paginada de objetos UserResource.
+    - Metadatos de paginación: current_page, last_page, total, from, to.
+
+  Información por usuario:
+    - Identificador UUID, nombre, correo electrónico, estado.
+    - Roles asignados con sus permisos.
+    - Fechas de último inicio de sesión, creación y actualización.
+
+
+  RF-06  Creación de Usuarios                                         [ALTA]
+  ───────────────────────────────────────────────────────────────────────────
+  Descripción:
+    El Sistema debe permitir crear nuevos usuarios con validación exhaustiva
+    de los datos de entrada y asignación de roles.
+
+  Permiso requerido: users.create
+
+  Datos requeridos:
+    - name            : Nombre completo (máximo 255 caracteres).
+    - email           : Correo único en el sistema (formato email válido).
+    - password        : Contraseña (mínimo 8 caracteres, con letras mayúsculas,
+                        minúsculas y números).
+    - password_confirmation: Confirmación de contraseña.
+
+  Datos opcionales:
+    - status          : Estado inicial (default: active).
+    - roles           : Array de nombres de roles a asignar.
+
+  Proceso:
+    1. StoreUserRequest valida todos los campos.
+    2. La contraseña se cifra con bcrypt mediante Hash::make().
+    3. Se crea el registro en la tabla users.
+    4. Se sincronizan los roles con syncRoles().
+    5. Se retorna HTTP 201 con el usuario creado.
+
+
+  RF-07  Visualización de Usuario Individual                          [ALTA]
+  ───────────────────────────────────────────────────────────────────────────
+  Descripción:
+    El Sistema debe permitir consultar el detalle completo de un usuario
+    específico, incluyendo sus roles y todos sus permisos.
+
+  Permiso requerido: users.view
+
+  Proceso:
+    1. El modelo User se resuelve mediante Route Model Binding.
+    2. Se cargan las relaciones roles.permissions mediante eager loading.
+    3. Se retorna el objeto transformado por UserResource.
+
+
+  RF-08  Actualización de Usuarios                                    [ALTA]
+  ───────────────────────────────────────────────────────────────────────────
+  Descripción:
+    El Sistema debe permitir modificar los datos de un usuario existente,
+    incluyendo la reasignación de roles.
+
+  Permiso requerido: users.update
+
+  Campos actualizables (todos opcionales mediante PATCH semántico):
+    - name, email, status, password (con confirmación), roles.
+
+  Restricciones especiales:
+    - No se puede remover el rol super-admin al último usuario con ese rol.
+    - El campo email se valida como único, ignorando el usuario actual.
+    - La contraseña solo se actualiza si se proporciona explícitamente.
+
+  Proceso:
+    1. UpdateUserRequest valida los campos presentes en la solicitud.
+    2. UserService::syncUserRoles() valida restricciones sobre super-admin.
+    3. Se actualizan únicamente los campos proporcionados.
+    4. Se retorna el usuario actualizado.
+
+
+  RF-09  Eliminación de Usuarios                                      [ALTA]
+  ───────────────────────────────────────────────────────────────────────────
+  Descripción:
+    El Sistema debe permitir eliminar usuarios de forma lógica (soft delete),
+    preservando la integridad referencial de los datos históricos.
+
+  Permiso requerido: users.delete
+
+  Validaciones de seguridad previas a la eliminación:
+    a) Un usuario no puede eliminar su propia cuenta.
+    b) No se puede eliminar al último usuario con rol super-admin, garantizando
+       que siempre exista al menos un administrador con acceso total.
+
+  Proceso:
+    1. UserService::deleteUser() ejecuta las validaciones anteriores.
+    2. Se invoca user->delete() que marca el campo deleted_at (soft delete).
+    3. El usuario no aparece en consultas regulares, pero los datos se conservan.
+
+
+────────────────────────────────────────────────────────────────────────────────
+2.3 MÓDULO DE ROLES Y PERMISOS
+────────────────────────────────────────────────────────────────────────────────
+
+  RF-10  Jerarquía de Roles                                           [ALTA]
+  ───────────────────────────────────────────────────────────────────────────
+  Descripción:
+    El Sistema define una jerarquía de cuatro roles con distintos niveles de
+    acceso:
+
+    Rol: super-admin
+    ─────────────────
+    Acceso total al sistema. El bypass se implementa mediante Gate::before()
+    en AppServiceProvider, lo que significa que este rol supera cualquier
+    verificación de permiso sin necesidad de asignaciones individuales.
+
+    Rol: admin
+    ───────────
+    Acceso administrativo. Permisos asignados:
+      - users.view, users.create, users.update, users.delete
+      - roles.view
+      - permissions.view
+
+    Rol: manager
+    ─────────────
+    Acceso de gestión de equipos y proyectos. Permisos asignados:
+      - users.view
+      - projects.view, projects.create, projects.update
+      - tasks.view, tasks.create, tasks.update
+
+    Rol: user
+    ──────────
+    Acceso estándar de usuario final. Permisos asignados:
+      - projects.view
+      - tasks.view, tasks.create, tasks.update
+
+
+  RF-11  Catálogo de Permisos                                         [ALTA]
+  ───────────────────────────────────────────────────────────────────────────
+  Descripción:
+    El Sistema registra y gestiona 18 permisos granulares organizados por
+    módulo funcional:
+
+    Módulo: Usuarios        → users.view, users.create, users.update,
+                              users.delete
+    Módulo: Roles           → roles.view, roles.create, roles.update,
+                              roles.delete
+    Módulo: Permisos        → permissions.view, permissions.assign
+    Módulo: Proyectos*      → projects.view, projects.create, projects.update,
+                              projects.delete
+    Módulo: Tareas*         → tasks.view, tasks.create, tasks.update,
+                              tasks.delete
+
+    (*) Permisos preregistrados para módulos de implementación futura.
+
+
+  RF-12  Verificación de Permisos en el Frontend                      [ALTA]
+  ───────────────────────────────────────────────────────────────────────────
+  Descripción:
+    La SPA debe ocultar o mostrar elementos de la interfaz de usuario según
+    los permisos efectivos del usuario autenticado, sin depender exclusivamente
+    de las validaciones del backend.
+
+  Mecanismos implementados:
+    a) Composable usePermissions: Provee las funciones can(), canAny(),
+       canAll(), hasRole(), hasAnyRole() para uso en componentes Vue.
+
+    b) Store de Pinia (auth.ts): Mantiene el array de permisos en memoria
+       y expone métodos de verificación reactivos.
+
+    c) Router Guards: Validan el permiso meta.permission antes de
+       renderizar cada vista protegida.
+
+
+────────────────────────────────────────────────────────────────────────────────
+2.4 MÓDULO DE PANEL DE CONTROL (DASHBOARD)
+────────────────────────────────────────────────────────────────────────────────
+
+  RF-13  Panel de Control Personalizado                               [MEDIA]
+  ───────────────────────────────────────────────────────────────────────────
+  Descripción:
+    El Sistema debe mostrar un panel de bienvenida personalizado al usuario
+    autenticado con información relevante a su rol.
+
+  Contenido mostrado:
+    - Tarjeta de bienvenida con nombre del usuario y rol principal.
+    - Indicadores de métricas (usuarios, proyectos, tareas, equipos).
+    - Lista de permisos efectivos del usuario.
+    - Acciones rápidas contextuales según nivel de acceso.
+
+  RF-14  Navegación Contextual por Rol                                [ALTA]
+  ───────────────────────────────────────────────────────────────────────────
+  Descripción:
+    El menú de navegación lateral debe mostrar únicamente las secciones a
+    las cuales el usuario tiene acceso, ocultando rutas no autorizadas.
+
+
+────────────────────────────────────────────────────────────────────────────────
+2.5 MÓDULOS FUTUROS PREVISTOS EN LA ARQUITECTURA
+────────────────────────────────────────────────────────────────────────────────
+
+  RF-15  Gestión de Proyectos                                         [BAJA]
+  ───────────────────────────────────────────────────────────────────────────
+    La arquitectura del Sistema reserva los permisos projects.view,
+    projects.create, projects.update y projects.delete. Los endpoints y
+    módulos correspondientes serán desarrollados en la fase 2.
+
+  RF-16  Gestión de Tareas                                            [BAJA]
+  ───────────────────────────────────────────────────────────────────────────
+    De forma análoga, los permisos tasks.view, tasks.create, tasks.update y
+    tasks.delete se encuentran preregistrados para el módulo de gestión de
+    tareas a implementar en la fase 2.
+
+  RF-17  Gestión de Equipos                                           [BAJA]
+  ───────────────────────────────────────────────────────────────────────────
+    El rol manager contempla la gestión de equipos de trabajo. La
+    funcionalidad será habilitada con la implementación de los modelos Team
+    y TeamMember en fases posteriores.
+
+
+================================================================================
+  CAPÍTULO 3 — REQUERIMIENTOS NO FUNCIONALES
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+3.1 SEGURIDAD
+────────────────────────────────────────────────────────────────────────────────
+
+  RNF-01  Autenticación por Sesión con CSRF                           [ALTA]
+    El Sistema utiliza cookies de sesión cifradas con protección CSRF nativa
+    de Laravel Sanctum, evitando el uso de tokens almacenados en localStorage
+    que son vulnerables a ataques XSS.
+
+  RNF-02  Cifrado de Contraseñas                                      [ALTA]
+    Todas las contraseñas se almacenan cifradas mediante el algoritmo bcrypt
+    con un factor de trabajo (cost factor) de 12 rondas, configurado en la
+    variable BCRYPT_ROUNDS del entorno.
+
+  RNF-03  Control de Acceso Basado en Roles (RBAC)                    [ALTA]
+    El acceso a recursos protegidos se verifica en dos niveles:
+      a) Backend: middleware permission: de Spatie Permission y Gate::before()
+         para super-admin.
+      b) Frontend: verificaciones reactivas en router guards y componentes.
+
+  RNF-04  Limitación de Tasa (Rate Limiting)                          [ALTA]
+    Para prevenir ataques de fuerza bruta y abuso de la API:
+      - Endpoint de login: máximo 5 solicitudes por minuto por IP.
+      - API general: máximo 60 solicitudes por minuto por usuario/IP.
+
+  RNF-05  Cabeceras de Seguridad HTTP                                 [ALTA]
+    El backend está preparado para incorporar cabeceras de seguridad
+    estándar: Content-Security-Policy, X-Frame-Options, X-Content-Type-Options,
+    Referrer-Policy y Permissions-Policy.
+
+  RNF-06  Configuración CORS Restrictiva                              [ALTA]
+    CORS está configurado para aceptar solicitudes únicamente desde el dominio
+    del frontend (http://localhost:5173 en desarrollo), con soporte de
+    credenciales habilitado y wildcard explícitamente restringido en producción.
+
+  RNF-07  Eliminación Lógica (Soft Delete)                            [MEDIA]
+    Los usuarios no se eliminan físicamente de la base de datos; se marca
+    el campo deleted_at, preservando registros históricos para auditorías y
+    cumplimiento normativo.
+
+  RNF-08  Variables de Entorno Separadas                              [ALTA]
+    Toda información sensible (credenciales de base de datos, claves de
+    aplicación, dominios de Sanctum) se gestiona mediante variables de
+    entorno en el archivo .env, el cual no se versiona en el repositorio.
+
+
+────────────────────────────────────────────────────────────────────────────────
+3.2 RENDIMIENTO
+────────────────────────────────────────────────────────────────────────────────
+
+  RNF-09  Carga Eficiente de Relaciones (Eager Loading)               [ALTA]
+    Se emplea Eloquent eager loading (->with('roles.permissions')) en todas
+    las consultas que requieran datos relacionados, evitando el problema de
+    consultas N+1 que degrada el rendimiento.
+
+  RNF-10  Paginación del Servidor                                     [ALTA]
+    Todos los listados de recursos se paginan en el servidor (15 registros
+    por página por defecto), evitando la transferencia innecesaria de grandes
+    volúmenes de datos al cliente.
+
+  RNF-11  Caché de Permisos                                           [ALTA]
+    Spatie Permission almacena en caché los permisos y roles durante 24 horas,
+    reduciendo el número de consultas a la base de datos por cada verificación
+    de autorización.
+
+  RNF-12  Code Splitting en el Frontend                               [MEDIA]
+    Vite genera bundles separados por ruta (lazy loading) mediante imports
+    dinámicos, reduciendo el tiempo de carga inicial de la SPA.
+
+  RNF-13  Tiempo de Respuesta de la API                               [ALTA]
+    Los endpoints de la API deben retornar respuestas en menos de 500ms bajo
+    condiciones normales de carga para operaciones CRUD estándar.
+
+
+────────────────────────────────────────────────────────────────────────────────
+3.3 ESCALABILIDAD
+────────────────────────────────────────────────────────────────────────────────
+
+  RNF-14  Identificadores UUID                                        [ALTA]
+    Los identificadores de usuario utilizan UUID v7 en lugar de enteros
+    autoincrementales, facilitando la distribución horizontal de la base de
+    datos y evitando ataques de enumeración de recursos.
+
+  RNF-15  Versionado de API                                           [ALTA]
+    Todos los endpoints se agrupan bajo el prefijo /api/v1/, permitiendo la
+    introducción de versiones posteriores (/api/v2/) sin romper la
+    compatibilidad con clientes existentes.
+
+  RNF-16  Arquitectura Modular del Backend                            [ALTA]
+    La organización del código en módulos de dominio (Auth, User, Permission)
+    permite agregar nuevos módulos (Project, Task, Team) de forma independiente
+    sin modificar el código existente.
+
+  RNF-17  Proveedor de Repositorios Desacoplado                       [MEDIA]
+    Los servicios (UserService, AuthService) encapsulan la lógica de acceso
+    a datos, permitiendo sustituir el ORM (Eloquent) por otro mecanismo de
+    persistencia sin afectar a los controladores.
+
+
+────────────────────────────────────────────────────────────────────────────────
+3.4 MANTENIBILIDAD
+────────────────────────────────────────────────────────────────────────────────
+
+  RNF-18  Separación de Responsabilidades (SRP)                       [ALTA]
+    El código sigue el Principio de Responsabilidad Única:
+      - Controllers: únicamente delegan y retornan respuestas HTTP.
+      - Services: contienen la lógica de negocio.
+      - Requests: validan y autorizan la entrada.
+      - Resources: transforman modelos para la API.
+
+  RNF-19  Convenciones de Nomenclatura                                [ALTA]
+    Backend (PHP): PascalCase para clases; camelCase para métodos y variables;
+    snake_case para columnas de base de datos y variables de entorno.
+    Frontend (TypeScript/Vue): camelCase para variables y funciones;
+    PascalCase para componentes; kebab-case para archivos de estilos.
+
+  RNF-20  Tipado Estricto                                             [ALTA]
+    - PHP: declare(strict_types=1) en todos los archivos de dominio y HTTP.
+    - TypeScript: modo strict habilitado en tsconfig con noUnusedLocals y
+      noUnusedParameters activos.
+
+  RNF-21  Infraestructura de Pruebas Preparada                        [MEDIA]
+    El proyecto incluye la estructura de directorios tests/Feature y
+    tests/Unit con PHPUnit configurado, y Vitest disponible para el frontend,
+    permitiendo implementar pruebas automatizadas de forma incremental.
+
+
+────────────────────────────────────────────────────────────────────────────────
+3.5 USABILIDAD
+────────────────────────────────────────────────────────────────────────────────
+
+  RNF-22  Mensajes de Error Descriptivos                              [ALTA]
+    Todos los errores de validación retornan mensajes en lenguaje natural
+    indicando el campo específico afectado y la regla infringida.
+
+  RNF-23  Retroalimentación Visual                                    [ALTA]
+    La interfaz muestra indicadores de carga (loading states) y mensajes
+    de confirmación o error tras cada operación, evitando que el usuario
+    quede sin retroalimentación visual.
+
+  RNF-24  Navegación Intuitiva                                        [MEDIA]
+    La barra lateral de navegación es colapsable y muestra únicamente las
+    secciones autorizadas para el rol del usuario, reduciendo la complejidad
+    visual para roles con acceso limitado.
+
+  RNF-25  Diseño Responsive                                           [MEDIA]
+    La interfaz se adapta a diferentes tamaños de pantalla mediante CSS Grid
+    y Flexbox, garantizando usabilidad en dispositivos de escritorio y tablet.
+
+
+────────────────────────────────────────────────────────────────────────────────
+3.6 DISPONIBILIDAD
+────────────────────────────────────────────────────────────────────────────────
+
+  RNF-26  Manejo Centralizado de Errores                              [ALTA]
+    El backend cuenta con un manejador de excepciones global configurado en
+    bootstrap/app.php que garantiza respuestas JSON estructuradas para
+    todos los tipos de error en rutas de la API (404, 401, 403, 422, 500),
+    evitando respuestas HTML inesperadas.
+
+  RNF-27  Reconexión Automática por CSRF Expirado                     [ALTA]
+    El interceptor de Axios detecta el código HTTP 419 (CSRF token mismatch)
+    y automáticamente obtiene un nuevo token CSRF antes de reintentar la
+    solicitud fallida, minimizando interrupciones al usuario.
+
+
+────────────────────────────────────────────────────────────────────────────────
+3.7 COMPATIBILIDAD
+────────────────────────────────────────────────────────────────────────────────
+
+  RNF-28  Soporte de Navegadores                                      [ALTA]
+    El frontend es compatible con los navegadores modernos que soporten
+    ES2020+: Google Chrome 90+, Mozilla Firefox 88+, Microsoft Edge 90+,
+    Safari 14+.
+
+  RNF-29  Versión de PHP                                              [ALTA]
+    El backend requiere PHP 8.2 o superior, aprovechando características
+    modernas: propiedades de solo lectura (readonly), enumeraciones nativas,
+    tipos de unión e intersección, y promote en constructores.
+
+  RNF-30  Versión de MySQL                                            [ALTA]
+    Se requiere MySQL 8.0 o superior para garantizar el soporte nativo de
+    UUID, expresiones de valores comunes (CTEs) y mejoras de rendimiento
+    en consultas JSON.
+
+
+================================================================================
+  CAPÍTULO 4 — TECNOLOGÍAS UTILIZADAS
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+4.1 STACK TECNOLÓGICO GENERAL
+────────────────────────────────────────────────────────────────────────────────
+
+  El Sistema adopta un stack moderno orientado a la productividad del
+  desarrollador, el rendimiento en producción y la mantenibilidad a largo plazo:
+
+  Capa            Tecnología           Versión     Rol
+  ──────────────  ───────────────────  ──────────  ──────────────────────────
+  Backend API     Laravel              11.x        Framework PHP principal
+  Autenticación   Laravel Sanctum      4.x         Autenticación SPA/API
+  Autorización    Spatie Permission    7.x         Control de acceso RBAC
+  Base de Datos   MySQL                8.0+        Persistencia de datos
+  ORM             Laravel Eloquent     (incluido)  Mapeo objeto-relacional
+  Frontend SPA    Vue.js               3.5+        Framework JavaScript
+  Build Tool      Vite                 7.x         Compilación y HMR
+  Tipado          TypeScript           5.9+        Tipado estático
+  Estado          Pinia                3.x         Gestión de estado
+  Enrutamiento    Vue Router           4.x         Navegación SPA
+  HTTP Client     Axios                1.x         Cliente HTTP
+  Lenguaje PHP    PHP                  8.2+        Lenguaje del backend
+  Servidor Dev    Laravel Artisan      (incluido)  Servidor de desarrollo
+  Gestor PHP      Composer             2.x         Dependencias PHP
+  Gestor JS       npm                  10+         Dependencias JavaScript
+
+
+────────────────────────────────────────────────────────────────────────────────
+4.2 BACKEND — DESCRIPCIÓN DETALLADA
+────────────────────────────────────────────────────────────────────────────────
+
+  A. Laravel 11 (Framework principal)
+  ─────────────────────────────────────
+  Laravel es un framework PHP de código abierto que sigue el patrón MVC
+  (Modelo-Vista-Controlador), aunque en este proyecto se implementa una
+  variante sin capa de vistas, actuando exclusivamente como API RESTful.
+
+  Justificación de selección:
+    - Ecosistema maduro con ciclo de lanzamiento Long-Term Support (LTS).
+    - Eloquent ORM reduce drásticamente el código SQL repetitivo.
+    - Sistema de migraciones declarativo y reversible.
+    - Inyección de dependencias nativa mediante el IoC Container.
+    - Pipeline de middleware elegante y composable.
+    - Documentación exhaustiva y comunidad activa.
+    - Integración nativa con Sanctum, Queue, Cache y otros componentes.
+
+  Alternativas consideradas y descartadas:
+    - Symfony: Mayor curva de aprendizaje; verboso para proyectos medianos.
+    - Lumen (micro-framework Laravel): Funcionalidades limitadas para el
+      crecimiento proyectado del sistema.
+
+  B. Laravel Sanctum 4.x (Autenticación)
+  ────────────────────────────────────────
+  Sanctum provee autenticación ligera para SPAs mediante cookies de sesión
+  con protección CSRF, y autenticación API mediante tokens de acceso personal.
+
+  Modo utilizado: SPA Authentication (cookies de sesión).
+
+  Justificación frente a alternativas:
+    - JWT (tymon/jwt-auth): Requiere gestión manual de renovación de tokens,
+      mayor complejidad de implementación y no soporta invalidación inmediata
+      de tokens sin una lista negra (blacklist).
+    - Passport (OAuth 2.0): Sobrecarga innecesaria para una SPA del mismo
+      dominio; diseñado para autenticación de terceros (OAuth flows).
+    - Sanctum en modo SPA: Solución oficial de Laravel, manejo automático
+      de CSRF, invalidación inmediata de sesiones, sin tokens en localStorage.
+
+  C. Spatie Laravel Permission 7.x (Autorización RBAC)
+  ──────────────────────────────────────────────────────
+  Biblioteca de gestión de roles y permisos mediante un modelo de datos
+  polimórfico que permite asignar permisos tanto a roles como directamente
+  a usuarios.
+
+  Características utilizadas:
+    - Asignación de roles a usuarios (assignRole, syncRoles).
+    - Asignación de permisos a roles (givePermissionTo).
+    - Middleware permission: para protección de rutas.
+    - Caché automático de permisos con expiración configurable (24 horas).
+    - Super-admin bypass mediante Gate::before() en AppServiceProvider.
+
+  D. Eloquent ORM con Soft Deletes y UUID
+  ─────────────────────────────────────────
+  El modelo User implementa:
+    - HasUuids: Generación automática de UUID v7 como clave primaria.
+    - SoftDeletes: Eliminación lógica mediante campo deleted_at.
+    - HasRoles: Integración con Spatie Permission.
+    - HasApiTokens: Soporte para tokens Sanctum.
+
+
+────────────────────────────────────────────────────────────────────────────────
+4.3 FRONTEND — DESCRIPCIÓN DETALLADA
+────────────────────────────────────────────────────────────────────────────────
+
+  A. Vue.js 3.5+ (Framework principal)
+  ──────────────────────────────────────
+  Vue 3 es el framework JavaScript progresivo oficial. Se utiliza con la
+  Composition API (<script setup>) que ofrece mejor TypeScript support,
+  mejor tree-shaking y lógica más composable que la Options API de Vue 2.
+
+  Justificación:
+    - Composition API permite extraer lógica en composables reutilizables.
+    - TypeScript nativo sin configuraciones adicionales.
+    - Virtual DOM con optimizaciones de compilación (patch flags, etc.).
+    - Ecosistema reactivo con Pinia y Vue Router como soluciones oficiales.
+
+  B. Pinia 3.x (Gestión de Estado)
+  ──────────────────────────────────
+  Pinia es la solución oficial de gestión de estado para Vue 3, reemplazando
+  a Vuex. Utiliza el patrón de store basado en Composition API.
+
+  Store implementado: auth.ts
+    - Mantiene el estado global de autenticación (usuario, roles, permisos).
+    - Expone métodos reactivos de verificación de permisos.
+    - Persiste el estado durante la sesión de navegación.
+
+  Ventajas sobre Vuex:
+    - API más simple y sin mutaciones explícitas.
+    - TypeScript support nativo.
+    - Soporte de DevTools de Vue.
+    - Modular por diseño.
+
+  C. Vue Router 4.x (Enrutamiento)
+  ──────────────────────────────────
+  Vue Router es la biblioteca oficial de enrutamiento para Vue 3.
+
+  Configuración implementada:
+    - Historial de navegación: HTML5 History API (createWebHistory).
+    - Rutas cargadas de forma diferida (lazy loading) mediante imports dinámicos.
+    - Navigation Guards: beforeEach para autenticación y permisos.
+    - Metadatos de ruta para control de acceso declarativo.
+
+  D. Axios 1.x (Cliente HTTP)
+  ────────────────────────────
+  Cliente HTTP basado en promesas con soporte de interceptores.
+
+  Configuración implementada:
+    - baseURL: http://localhost:8000/api/v1
+    - withCredentials: true (para envío de cookies SPA).
+    - withXSRFToken: true (para protección CSRF automática).
+    - Request interceptor: extracción y envío del token XSRF.
+    - Response interceptor: manejo centralizado de errores HTTP.
+
+  E. TypeScript 5.9+ (Tipado Estático)
+  ──────────────────────────────────────
+  TypeScript extiende JavaScript añadiendo tipado estático, que proporciona:
+    - Detección temprana de errores en tiempo de compilación.
+    - Autocompletado e IntelliSense en el editor.
+    - Documentación implícita mediante interfaces y tipos.
+    - Refactorización más segura en proyectos en crecimiento.
+
+  F. Vite 7.x (Build Tool)
+  ──────────────────────────
+  Vite es la herramienta de construcción de nueva generación para proyectos
+  web, basada en ECMAScript modules nativos.
+
+  Características aprovechadas:
+    - Hot Module Replacement (HMR) instantáneo durante desarrollo.
+    - Code splitting automático por ruta.
+    - Path aliases (@/ → src/) para imports limpios.
+    - Servidor proxy para evitar problemas CORS en desarrollo.
+    - Build optimizado con Rollup para producción.
+
+
+────────────────────────────────────────────────────────────────────────────────
+4.4 BASE DE DATOS
+────────────────────────────────────────────────────────────────────────────────
+
+  MySQL 8.0+ es el Sistema de Gestión de Bases de Datos (SGBD) relacional
+  seleccionado para la persistencia de datos.
+
+  Justificación:
+    - Amplia adopción en entornos de producción PHP/Laravel.
+    - Soporte nativo de UUID en versión 8.0+.
+    - Transacciones ACID para integridad de datos.
+    - Índices compuestos para consultas de filtrado frecuentes.
+    - Compatible con el entorno de desarrollo Laragon.
+
+  Tablas creadas por el sistema:
+
+    Tabla                     Descripción
+    ─────────────────────────────────────────────────────────────
+    users                     Usuarios del sistema
+    roles                     Roles disponibles (Spatie)
+    permissions               Permisos granulares (Spatie)
+    model_has_roles           Asignación de roles a modelos
+    model_has_permissions     Asignación de permisos a modelos
+    role_has_permissions      Asignación de permisos a roles
+    personal_access_tokens    Tokens API de Sanctum
+    cache                     Almacén de caché (driver: file)
+    jobs                      Cola de trabajos asíncronos
+    failed_jobs               Trabajos fallidos de la cola
+    job_batches               Lotes de trabajos
+
+
+────────────────────────────────────────────────────────────────────────────────
+4.5 HERRAMIENTAS DE DESARROLLO
+────────────────────────────────────────────────────────────────────────────────
+
+  Herramienta          Versión    Propósito
+  ───────────────────  ─────────  ───────────────────────────────────────────
+  Laragon              6.x        Entorno de desarrollo local para Windows
+  PHP                  8.2+       Runtime del backend
+  Composer             2.x        Gestor de dependencias PHP
+  Node.js              20+        Runtime de JavaScript
+  npm                  10+        Gestor de dependencias JavaScript
+  Laravel Pint         1.x        Formateador de código PHP (PSR-12)
+  Laravel Tinker       2.x        REPL interactivo para Laravel
+  PHPUnit              11.x       Framework de pruebas para PHP
+  vue-tsc              3.x        Verificador de tipos TypeScript para Vue
+
+
+────────────────────────────────────────────────────────────────────────────────
+4.6 DEPENDENCIAS EXTERNAS CLAVE
+────────────────────────────────────────────────────────────────────────────────
+
+  BACKEND (composer.json)                    FRONTEND (package.json)
+  ─────────────────────────────────────────  ──────────────────────────────
+  laravel/framework        ^11.x             vue                   ^3.5.25
+  laravel/sanctum          ^4.0              vue-router            ^4.6.4
+  spatie/laravel-permission ^7.2             pinia                 ^3.0.4
+  laravel/tinker           ^2.x              axios                 ^1.13.5
+                                             typescript            ~5.9.3
+                                             vite                  ^7.3.1
+                                             @vitejs/plugin-vue    ^6.0.2
+                                             @vue/tsconfig         ^0.8.1
+
+
+================================================================================
+  CAPÍTULO 5 — ARQUITECTURA DEL SISTEMA
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+5.1 ESTILO ARQUITECTÓNICO
+────────────────────────────────────────────────────────────────────────────────
+
+  El Sistema adopta una arquitectura de Monolito Modular Desacoplado
+  (Decoupled Modular Monolith), caracterizada por:
+
+  1. Separación física completa entre backend y frontend.
+     - Backend: aplicación Laravel autónoma que expone una API REST.
+     - Frontend: aplicación Vue 3 autónoma que consume la API.
+     - Comunicación exclusivamente mediante HTTP/JSON.
+
+  2. Organización interna en módulos de dominio.
+     - Módulos: Auth, User, Permission (fase inicial).
+     - Módulos futuros: Project, Task, Team.
+     - Cada módulo es autónomo con sus propios Controllers, Services y
+       Requests.
+
+  3. Capas de abstracción bien definidas dentro del backend.
+     - Capa de Presentación: Controllers, Resources, Requests.
+     - Capa de Aplicación/Dominio: Services.
+     - Capa de Infraestructura: Eloquent, Database, Config.
+
+  Esta arquitectura provee un equilibrio óptimo entre simplicidad operativa
+  (un solo repositorio, un solo despliegue) y la posibilidad de evolucionar
+  hacia microservicios si el volumen lo justifica en el futuro.
+
+
+────────────────────────────────────────────────────────────────────────────────
+5.2 DIAGRAMA DE CAPAS
+────────────────────────────────────────────────────────────────────────────────
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │                        CAPA DE PRESENTACIÓN                             │
+  │                         (Vue 3 SPA — Vite)                              │
+  │                                                                         │
+  │   LoginView  │  DashboardView  │  UsersView  │  DashboardLayout         │
+  │   Pinia Store (auth.ts)        │  Vue Router │  usePermissions          │
+  └────────────────────────────────┬────────────────────────────────────────┘
+                                   │  HTTP/JSON (CORS + CSRF)
+                                   ▼
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │                      CAPA DE API / ENRUTAMIENTO                         │
+  │                          (routes/api.php)                               │
+  │                                                                         │
+  │   /api/v1/auth/*  │  /api/v1/users/*                                   │
+  │   Middleware: auth:sanctum │ throttle │ permission                      │
+  └────────────────────────────┬────────────────────────────────────────────┘
+                                │
+                                ▼
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │                    CAPA DE CONTROLADORES (HTTP Layer)                   │
+  │                                                                         │
+  │   AuthController (login, logout, me)                                   │
+  │   UserController (index, store, show, update, destroy)                 │
+  └────────────────────────────┬────────────────────────────────────────────┘
+                                │
+                                ▼
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │                      CAPA DE SERVICIOS (Business Logic)                 │
+  │                                                                         │
+  │   AuthService (authenticate, updateLastLogin, logout, getCurrentUser)  │
+  │   UserService (getUsers, createUser, updateUser, syncRoles, deleteUser)│
+  └────────────────────────────┬────────────────────────────────────────────┘
+                                │
+                                ▼
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │                      CAPA DE MODELOS (Eloquent ORM)                     │
+  │                                                                         │
+  │   User (UUID, SoftDeletes, HasRoles, HasApiTokens)                     │
+  │   Role │ Permission  (Spatie Permission models)                         │
+  └────────────────────────────┬────────────────────────────────────────────┘
+                                │
+                                ▼
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │                         BASE DE DATOS (MySQL 8.0)                       │
+  │                                                                         │
+  │   users │ roles │ permissions │ model_has_roles │ model_has_permissions │
+  │   role_has_permissions │ personal_access_tokens                         │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────
+5.3 ARQUITECTURA DEL BACKEND (Laravel 11)
+────────────────────────────────────────────────────────────────────────────────
+
+  Estructura de directorios del backend:
+
+  backend/
+  ├── app/
+  │   ├── Http/
+  │   │   ├── Controllers/
+  │   │   │   └── Api/
+  │   │   │       └── V1/                  (Versión 1 de la API)
+  │   │   │           ├── Auth/
+  │   │   │           │   └── AuthController.php
+  │   │   │           └── User/
+  │   │   │               └── UserController.php
+  │   │   ├── Requests/
+  │   │   │   └── Api/V1/
+  │   │   │       ├── Auth/
+  │   │   │       │   └── LoginRequest.php
+  │   │   │       └── User/
+  │   │   │           ├── StoreUserRequest.php
+  │   │   │           └── UpdateUserRequest.php
+  │   │   └── Resources/
+  │   │       └── Api/V1/
+  │   │           ├── UserResource.php
+  │   │           ├── RoleResource.php
+  │   │           └── PermissionResource.php
+  │   ├── Models/
+  │   │   └── User.php
+  │   ├── Services/
+  │   │   ├── AuthService.php
+  │   │   └── UserService.php
+  │   └── Providers/
+  │       └── AppServiceProvider.php      (Gate + Rate Limiting)
+  ├── bootstrap/
+  │   └── app.php                         (Middleware + Exception handling)
+  ├── config/
+  │   ├── cors.php
+  │   ├── sanctum.php
+  │   └── permission.php
+  ├── database/
+  │   ├── migrations/                     (6 migraciones)
+  │   ├── seeders/                        (PermissionSeeder, RoleSeeder,
+  │   │                                    AdminUserSeeder, DatabaseSeeder)
+  │   └── factories/
+  │       └── UserFactory.php
+  └── routes/
+      └── api.php                         (8 endpoints bajo /api/v1/)
+
+
+────────────────────────────────────────────────────────────────────────────────
+5.4 ARQUITECTURA DEL FRONTEND (Vue 3)
+────────────────────────────────────────────────────────────────────────────────
+
+  Estructura de directorios del frontend:
+
+  frontend/
+  ├── src/
+  │   ├── api/
+  │   │   └── axios.ts                   (Cliente HTTP configurado)
+  │   ├── composables/
+  │   │   └── usePermissions.ts          (Lógica reutilizable de permisos)
+  │   ├── layouts/
+  │   │   └── DashboardLayout.vue        (Estructura visual principal)
+  │   ├── router/
+  │   │   └── index.ts                   (Rutas + Navigation Guards)
+  │   ├── stores/
+  │   │   └── auth.ts                    (Estado global de autenticación)
+  │   ├── types/
+  │   │   └── index.ts                   (Interfaces TypeScript)
+  │   └── views/
+  │       ├── auth/
+  │       │   └── LoginView.vue
+  │       ├── dashboard/
+  │       │   └── DashboardView.vue
+  │       ├── users/
+  │       │   └── UsersView.vue
+  │       └── NotFoundView.vue
+  ├── vite.config.ts                     (Alias + proxy de desarrollo)
+  └── tsconfig.app.json                  (Configuración TypeScript estricta)
+
+
+────────────────────────────────────────────────────────────────────────────────
+5.5 DIAGRAMA DE BASE DE DATOS (Modelo Entidad-Relación)
+────────────────────────────────────────────────────────────────────────────────
+
+  ┌───────────────────────┐        ┌───────────────────────┐
+  │        USERS          │        │        ROLES          │
+  ├───────────────────────┤        ├───────────────────────┤
+  │ id UUID (PK)          │        │ id BIGINT (PK)        │
+  │ name VARCHAR(255)     │        │ name VARCHAR(255)     │
+  │ email VARCHAR(255) UK │        │ guard_name VARCHAR    │
+  │ password VARCHAR      │        │ created_at TIMESTAMP  │
+  │ status ENUM           │        │ updated_at TIMESTAMP  │
+  │ email_verified_at     │        └───────────┬───────────┘
+  │ last_login_at         │                    │
+  │ remember_token        │                    │
+  │ created_at TIMESTAMP  │                    │
+  │ updated_at TIMESTAMP  │                    │
+  │ deleted_at TIMESTAMP  │                    │
+  └──────────┬────────────┘                    │
+             │                                 │
+             │         ┌───────────────────────┘
+             │         │
+             ▼         ▼
+  ┌───────────────────────────┐     ┌───────────────────────┐
+  │     MODEL_HAS_ROLES       │     │      PERMISSIONS      │
+  ├───────────────────────────┤     ├───────────────────────┤
+  │ role_id BIGINT (FK->roles)│     │ id BIGINT (PK)        │
+  │ model_type VARCHAR        │     │ name VARCHAR(255)     │
+  │ model_id UUID             │     │ guard_name VARCHAR    │
+  └───────────────────────────┘     │ created_at TIMESTAMP  │
+                                    │ updated_at TIMESTAMP  │
+  ┌───────────────────────────┐     └───────────┬───────────┘
+  │  MODEL_HAS_PERMISSIONS    │                 │
+  ├───────────────────────────┤                 │
+  │ permission_id BIGINT (FK) │◄────────────────┤
+  │ model_type VARCHAR        │                 │
+  │ model_id UUID             │                 │
+  └───────────────────────────┘                 │
+                                                │
+  ┌───────────────────────────────────┐         │
+  │       ROLE_HAS_PERMISSIONS        │         │
+  ├───────────────────────────────────┤         │
+  │ permission_id BIGINT (FK->perms) ◄──────────┘
+  │ role_id BIGINT (FK->roles)        │
+  └───────────────────────────────────┘
+
+  Descripción de campos de la tabla USERS:
+
+  Campo              Tipo                Restricción       Notas
+  ─────────────────  ──────────────────  ───────────────  ──────────────────
+  id                 CHAR(36) UUID       PRIMARY KEY      UUID v7 automático
+  name               VARCHAR(255)        NOT NULL
+  email              VARCHAR(255)        NOT NULL, UNIQUE
+  password           VARCHAR(255)        NOT NULL         Bcrypt, 12 rondas
+  status             ENUM                NOT NULL         active|inactive|
+                                         DEFAULT active   suspended
+  email_verified_at  TIMESTAMP           NULLABLE
+  last_login_at      TIMESTAMP           NULLABLE         Actualizado al login
+  remember_token     VARCHAR(100)        NULLABLE
+  created_at         TIMESTAMP           NOT NULL
+  updated_at         TIMESTAMP           NOT NULL
+  deleted_at         TIMESTAMP           NULLABLE         Soft delete
+
+  Índices: (status, created_at), (email UNIQUE)
+
+
+────────────────────────────────────────────────────────────────────────────────
+5.6 DIAGRAMA DE FLUJO DE AUTENTICACIÓN
+────────────────────────────────────────────────────────────────────────────────
+
+  CLIENTE (Vue 3 SPA)           SERVIDOR (Laravel 11 API)
+  ─────────────────────         ─────────────────────────────────────────────
+
+  1. Usuario abre /login
+         │
+         ▼
+  2. Completa formulario
+     (email + password)
+         │
+         ▼
+  3. Click en "Sign in"
+         │
+         ▼
+  4. GET /sanctum/csrf-cookie──────────────────────► Genera CSRF token
+         │◄──────────── Set-Cookie: XSRF-TOKEN ──────────────────────────────
+         │
+         ▼
+  5. POST /api/v1/auth/login
+     X-XSRF-TOKEN: {token}  ──────────────────────► Valida CSRF
+     {email, password}                               Ejecuta LoginRequest
+                                                     Auth::attempt()
+                                                     Verifica status='active'
+                                                     updateLastLogin()
+                                                     session()->regenerate()
+         │◄──────────── Set-Cookie: session ─────────────────────────────────
+         │◄──────────── {message, user{roles,perms}} ─────────────────────────
+         │
+         ▼
+  6. auth.ts store: user = response.data.user
+         │
+         ▼
+  7. Router: redirige a /dashboard
+         │
+         ▼
+  8. Peticiones siguientes:
+     Cookie session (automático)──────────────────► Sanctum verifica sesión
+     X-XSRF-TOKEN (interceptor)                      Resuelve usuario
+         │◄──────────── Respuesta protegida ─────────────────────────────────
+
+
+────────────────────────────────────────────────────────────────────────────────
+5.7 DIAGRAMA DE FLUJO DE AUTORIZACIÓN (Verificación de Permisos)
+────────────────────────────────────────────────────────────────────────────────
+
+  FRONTEND                          BACKEND
+  ─────────────────────────────     ─────────────────────────────────────────
+
+  Router guard detecta              Solicitud llega a middleware
+  meta.permission: 'users.view'     'permission:users.view'
+         │                                  │
+         ▼                                  ▼
+  authStore.hasPermission()         Gate::before() ejecuta
+         │                                  │
+         ▼                          ¿usuario es super-admin?
+  ¿Super-admin?                             │
+  │   SÍ → permite acceso          SÍ ──► Retorna true (bypass completo)
+  │                                         │
+  │   NO → busca en                 NO ──► Verifica role_has_permissions
+  │        permissions[]                     │
+  │         │                       ¿tiene el permiso?
+  │         ▼                               │
+  │   ¿tiene el permiso?          SÍ ──► Permite acceso al endpoint
+  │   SÍ → permite acceso         NO ──► HTTP 403 Forbidden
+  │   NO → redirige /dashboard
+
+
+────────────────────────────────────────────────────────────────────────────────
+5.8 ENDPOINTS DE LA API REST
+────────────────────────────────────────────────────────────────────────────────
+
+  Base URL: http://localhost:8000/api/v1
+
+  Módulo: Autenticación
+  ─────────────────────────────────────────────────────────────────────────────
+  Método  Ruta              Middleware              Descripción
+  ──────  ────────────────  ──────────────────────  ────────────────────────
+  POST    /auth/login       throttle:5,1            Inicio de sesión
+  POST    /auth/logout      auth:sanctum             Cierre de sesión
+  GET     /auth/me          auth:sanctum             Usuario autenticado
+
+  Módulo: Gestión de Usuarios
+  ─────────────────────────────────────────────────────────────────────────────
+  Método  Ruta              Middleware                          Descripción
+  ──────  ────────────────  ──────────────────────────────────  ──────────────
+  GET     /users            auth:sanctum, permission:users.view Listar usuarios
+  POST    /users            auth:sanctum, permission:users.create Crear usuario
+  GET     /users/{user}     auth:sanctum, permission:users.view Ver usuario
+  PUT     /users/{user}     auth:sanctum, permission:users.update Editar usuario
+  DELETE  /users/{user}     auth:sanctum, permission:users.delete Eliminar usuario
+
+  Formato de respuesta estándar:
+
+  Éxito (2xx):
+    {
+      "message": "Descripción de la operación",
+      "user": { ...UserResource }         // Objeto único
+      // o
+      "data": [ ...UserResource[] ],      // Colección
+      "meta": { ...PaginationMeta }
+    }
+
+  Error de validación (422):
+    {
+      "message": "The given data was invalid.",
+      "errors": {
+        "campo": ["Mensaje de error"]
+      }
+    }
+
+  Error de autenticación (401):
+    { "message": "Unauthenticated." }
+
+  Error de autorización (403):
+    { "message": "Forbidden." }
+
+
+────────────────────────────────────────────────────────────────────────────────
+5.9 PATRONES DE DISEÑO APLICADOS
+────────────────────────────────────────────────────────────────────────────────
+
+  A. Backend
+
+  Patrón                    Implementación
+  ────────────────────────  ─────────────────────────────────────────────────
+  Service Layer             AuthService, UserService encapsulan toda la
+                            lógica de negocio. Los controladores únicamente
+                            delegan al servicio correspondiente y formatean
+                            la respuesta HTTP.
+
+  Data Transfer Object      Los Form Requests (LoginRequest, StoreUserRequest,
+  (DTO)                     UpdateUserRequest) actúan como DTOs, validando y
+                            estructurando los datos de entrada antes de
+                            pasarlos a la capa de servicio.
+
+  Transformer / Presenter   Los API Resources (UserResource, RoleResource,
+                            PermissionResource) transforman los modelos
+                            Eloquent a representaciones JSON estandarizadas
+                            para el cliente.
+
+  Middleware (Chain of      La cadena de middleware en bootstrap/app.php
+  Responsibility)           procesa cada solicitud secuencialmente:
+                            EnsureFrontendRequestsAreStateful →
+                            auth:sanctum → permission:xxx → Controller.
+
+  Observer / Events         Los eventos de dominio (UserLoggedIn, UserCreated)
+                            están previstos en la arquitectura para
+                            desacoplar efectos secundarios (notificaciones,
+                            auditorías) de la lógica principal.
+
+  Strategy                  El sistema de caché de Spatie Permission puede
+                            cambiar de driver (file, Redis, database) sin
+                            modificar el código de autorización.
+
+  B. Frontend
+
+  Patrón                    Implementación
+  ────────────────────────  ─────────────────────────────────────────────────
+  Store Pattern (Pinia)     El store auth.ts centraliza el estado de
+                            autenticación y permisos, evitando prop drilling
+                            a través de múltiples niveles de componentes.
+
+  Composable Pattern        usePermissions() extrae y encapsula la lógica
+                            de verificación de permisos en una función
+                            reutilizable en cualquier componente Vue.
+
+  Layout Component          DashboardLayout.vue provee una estructura visual
+                            consistente mediante slots nombrados, reutilizable
+                            en múltiples vistas.
+
+  Guard Pattern             La guarda de navegación beforeEach centraliza
+                            la lógica de control de acceso del router,
+                            evitando repetición en cada componente.
+
+  Interceptor Pattern       Los interceptores de Axios centralizan el
+                            manejo de CSRF, autenticación y errores HTTP,
+                            evitando código repetitivo en cada petición.
+
+
+────────────────────────────────────────────────────────────────────────────────
+5.10 ESTRATEGIA DE SEGURIDAD
+────────────────────────────────────────────────────────────────────────────────
+
+  El Sistema implementa una estrategia de seguridad en profundidad (Defense
+  in Depth) con múltiples capas de protección:
+
+  Capa 1: Transporte
+  ─────────────────────
+  - En producción: HTTPS obligatorio para cifrado en tránsito.
+  - Cookies de sesión con flags Secure, HttpOnly y SameSite=Lax.
+  - CORS restrictivo: solo el dominio del frontend puede realizar
+    solicitudes con credenciales.
+
+  Capa 2: Autenticación
+  ─────────────────────
+  - Laravel Sanctum: sesiones basadas en cookies, sin tokens en localStorage.
+  - CSRF Protection: token sincronizado en cada solicitud mutante.
+  - Rate limiting: 5 intentos/minuto en login por IP.
+  - Verificación de estado de cuenta: usuarios inactivos o suspendidos
+    no pueden autenticarse incluso con credenciales correctas.
+
+  Capa 3: Autorización
+  ─────────────────────
+  - RBAC granular mediante Spatie Permission (18 permisos, 4 roles).
+  - Verificación en dos niveles: backend (middleware) y frontend (guards).
+  - Super-admin bypass mediante Gate::before() sin asignaciones individuales.
+  - Reglas de negocio: no se puede eliminar el último super-admin ni
+    auto-eliminar la propia cuenta.
+
+  Capa 4: Datos
+  ─────────────
+  - Contraseñas cifradas con bcrypt (12 rondas) mediante Hash::make().
+  - UUID como clave primaria: previene ataques de enumeración secuencial.
+  - Soft deletes: preserva datos históricos para auditoría.
+  - Filtros de entrada: StrictTypes + Form Requests previenen inyección SQL.
+  - ORM parametrizado (Eloquent): todas las consultas usan prepared statements.
+
+  Capa 5: Respuestas
+  ──────────────────
+  - La API siempre responde JSON en rutas /api/*: nunca HTML no previsto.
+  - Información sensible (password, remember_token) excluida de las
+    respuestas mediante el atributo $hidden del modelo User.
+  - Mensajes de error genéricos en producción (APP_DEBUG=false) para
+    no exponer información interna del sistema.
+
+
+================================================================================
+  GLOSARIO DE USUARIOS DEL SISTEMA (Datos de Prueba)
+================================================================================
+
+  Los siguientes usuarios son generados por los seeders de la base de datos
+  para pruebas y demostración del sistema:
+
+  Usuario           Email                    Password    Rol
+  ────────────────  ─────────────────────── ──────────  ─────────────────
+  Super Admin       admin@example.com        password    super-admin
+  Administrador     manager@example.com      password    admin
+  Usuario estándar  user@example.com         password    user
+
+  NOTA: Estas credenciales son exclusivamente para entornos de desarrollo
+  y pruebas. En un entorno de producción deben eliminarse y reemplazarse
+  por credenciales seguras.
+
+
+================================================================================
+  INSTRUCCIONES DE DESPLIEGUE (Entorno de Desarrollo)
+================================================================================
+
+  Prerrequisitos:
+    - PHP 8.2 o superior
+    - Composer 2.x
+    - Node.js 20+ y npm 10+
+    - MySQL 8.0+ en ejecución
+    - Laragon 6.x (o entorno equivalente)
+
+  Paso 1: Configurar Backend
+    $ cd project-management/backend
+    $ composer install
+    $ cp .env.example .env         (si .env no existe)
+    $ php artisan migrate:fresh --seed
+
+  Paso 2: Iniciar Backend
+    $ php artisan serve
+    → API disponible en: http://localhost:8000
+
+  Paso 3: Configurar Frontend
+    $ cd project-management/frontend
+    $ npm install
+
+  Paso 4: Iniciar Frontend
+    $ npm run dev
+    → SPA disponible en: http://localhost:5173
+
+
+================================================================================
+  REGISTRO DE VERSIONES DEL DOCUMENTO
+================================================================================
+
+  Versión   Fecha         Autor             Cambios
+  ────────  ────────────  ────────────────  ──────────────────────────────────
+  1.0.0     Febrero 2026  Equipo de         Documento inicial. Cubre la fase 1:
+                          Desarrollo        autenticación, usuarios y permisos.
+
+
+================================================================================
+              FIN DEL DOCUMENTO DE REQUERIMIENTOS — VERSIÓN 1.0.0
+================================================================================
