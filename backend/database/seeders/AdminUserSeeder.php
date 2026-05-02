@@ -13,43 +13,46 @@ class AdminUserSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create Super Admin
-        $superAdmin = User::firstOrCreate(
-            ['email' => 'admin@example.com'],
+        $users = [
             [
-                'name' => 'Super Admin',
-                'password' => Hash::make('password'),
-                'status' => 'active',
-                'email_verified_at' => now(),
-            ]
-        );
-
-        $superAdmin->assignRole('super-admin');
-
-        // Create a regular admin
-        $admin = User::firstOrCreate(
-            ['email' => 'manager@example.com'],
+                'email' => 'admin@example.com',
+                'name' => 'Administrador Demo',
+                'role' => 'administrador',
+            ],
             [
-                'name' => 'Manager User',
-                'password' => Hash::make('password'),
-                'status' => 'active',
-                'email_verified_at' => now(),
-            ]
-        );
-
-        $admin->assignRole('admin');
-
-        // Create a regular user
-        $user = User::firstOrCreate(
-            ['email' => 'user@example.com'],
+                'email' => 'manager@example.com',
+                'name' => 'Coordinador Demo',
+                'role' => 'coordinador',
+            ],
             [
-                'name' => 'Regular User',
-                'password' => Hash::make('password'),
-                'status' => 'active',
-                'email_verified_at' => now(),
-            ]
-        );
+                'email' => 'user@example.com',
+                'name' => 'Estudiante Demo',
+                'role' => 'estudiante',
+            ],
+            [
+                'email' => 'evaluador@example.com',
+                'name' => 'Evaluador Demo',
+                'role' => 'evaluador',
+            ],
+            [
+                'email' => 'director@example.com',
+                'name' => 'Director Demo',
+                'role' => 'director',
+            ],
+        ];
 
-        $user->assignRole('user');
+        foreach ($users as $demoUser) {
+            $user = User::updateOrCreate(
+                ['email' => $demoUser['email']],
+                [
+                    'name' => $demoUser['name'],
+                    'password' => Hash::make('password'),
+                    'status' => 'active',
+                    'email_verified_at' => now(),
+                ]
+            );
+
+            $user->syncRoles([$demoUser['role']]);
+        }
     }
 }

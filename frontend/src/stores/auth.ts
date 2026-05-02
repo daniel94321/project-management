@@ -70,7 +70,6 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Permission checking
   function hasPermission(permission: string): boolean {
-    if (roles.value.includes('super-admin')) return true
     return permissions.value.includes(permission)
   }
 

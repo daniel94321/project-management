@@ -4,7 +4,11 @@ import { useAuthStore } from '@/stores/auth'
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    redirect: '/dashboard',
+    name: 'landing',
+    component: () => import('@/views/public/LandingView.vue'),
+    meta: {
+      title: 'Inicio',
+    },
   },
   {
     path: '/login',
@@ -16,12 +20,71 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/register',
+    name: 'register',
+    component: () => import('@/views/auth/RegisterView.vue'),
+    meta: {
+      guest: true,
+      title: 'Crear cuenta',
+    },
+  },
+  {
     path: '/dashboard',
     name: 'dashboard',
     component: () => import('@/views/dashboard/DashboardView.vue'),
     meta: {
       requiresAuth: true,
       title: 'Dashboard',
+    },
+  },
+  {
+    path: '/dashboard/administrador',
+    name: 'dashboard-admin',
+    component: () => import('@/views/roles/AdministratorView.vue'),
+    meta: {
+      requiresAuth: true,
+      role: ['administrador'],
+      title: 'Administración',
+    },
+  },
+  {
+    path: '/dashboard/coordinador',
+    name: 'dashboard-coordinator',
+    component: () => import('@/views/roles/CoordinatorView.vue'),
+    meta: {
+      requiresAuth: true,
+      role: ['administrador', 'coordinador'],
+      title: 'Coordinación',
+    },
+  },
+  {
+    path: '/dashboard/evaluador',
+    name: 'dashboard-evaluator',
+    component: () => import('@/views/roles/EvaluatorView.vue'),
+    meta: {
+      requiresAuth: true,
+      role: ['administrador', 'evaluador'],
+      title: 'Evaluación',
+    },
+  },
+  {
+    path: '/dashboard/director',
+    name: 'dashboard-director',
+    component: () => import('@/views/roles/DirectorView.vue'),
+    meta: {
+      requiresAuth: true,
+      role: ['administrador', 'director'],
+      title: 'Dirección',
+    },
+  },
+  {
+    path: '/dashboard/estudiante',
+    name: 'dashboard-student',
+    component: () => import('@/views/roles/StudentView.vue'),
+    meta: {
+      requiresAuth: true,
+      role: ['administrador', 'estudiante'],
+      title: 'Estudiante',
     },
   },
   {
@@ -92,6 +155,16 @@ router.beforeEach(async (to, _from) => {
     return { name: 'dashboard' }
   }
 
+  if (to.meta.role) {
+    const allowedRoles = Array.isArray(to.meta.role)
+      ? to.meta.role
+      : [to.meta.role]
+
+    if (!authStore.hasAnyRole(allowedRoles as string[])) {
+      return { name: 'dashboard' }
+    }
+  }
+
   return true
 })
 
@@ -104,6 +177,7 @@ declare module 'vue-router' {
     guest?: boolean
     permission?: string
     permissions?: string[]
+    role?: string | string[]
     title?: string
   }
 }

@@ -12,11 +12,27 @@ use Spatie\Permission\Models\Role;
 class RoleController extends Controller
 {
     /**
+     * Roles enabled in this application.
+     *
+     * @var array<int, string>
+     */
+    private array $allowedRoles = [
+        'administrador',
+        'coordinador',
+        'evaluador',
+        'director',
+        'estudiante',
+    ];
+
+    /**
      * Return all roles (used by forms to populate role selectors).
      */
     public function index(): AnonymousResourceCollection
     {
-        $roles = Role::orderBy('name')->get();
+        $roles = Role::query()
+            ->whereIn('name', $this->allowedRoles)
+            ->orderBy('name')
+            ->get();
 
         return RoleResource::collection($roles);
     }

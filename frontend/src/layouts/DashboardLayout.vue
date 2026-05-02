@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
+import type { RouteLocationRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { usePermissions } from '@/composables/usePermissions'
 import { useNotifications } from '@/composables/useNotifications'
@@ -8,7 +9,7 @@ import ToastContainer from '@/components/ToastContainer.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
-const { can, isSuperAdmin } = usePermissions()
+const { can, isAdmin } = usePermissions()
 const { notifications, unreadCount, markAllRead, markRead } = useNotifications()
 
 const isSidebarOpen    = ref(true)
@@ -26,6 +27,61 @@ function toggleSidebar() {
 function toggleNotifications() {
   showNotifications.value = !showNotifications.value
 }
+
+function formatRoleLabel(role: string): string {
+  return role.charAt(0).toUpperCase() + role.slice(1)
+}
+
+type NavItem = {
+  key: string
+  label: string
+  icon: string
+  to: RouteLocationRaw
+}
+
+/**
+ * Sidebar dinámico:
+ * - Perfil -> vista del rol
+ * - Seguimiento -> vista del rol (por ahora reutiliza el workspace del rol existente)
+ * - Proyectos/Usuarios -> rutas globales con permisos (aún no hay pantallas específicas por sección/rol)
+ */
+const roleNavItems = computed<NavItem[]>(() => {
+  const roles = new Set(authStore.roles)
+
+  const isAdminRole = roles.has('administrador')
+  const has = (r: string) => roles.has(r)
+
+  const items: NavItem[] = []
+
+  const add = (key: string, label: string, icon: string, to: NavItem['to']) => {
+    if (items.some(i => i.key === key)) return
+    items.push({ key, label, icon, to })
+  }
+
+  if (isAdminRole) {
+    add('perfil-administrador', 'Perfil', '🧭', { name: 'dashboard-admin' })
+    add('seguimiento-administrador', 'Seguimiento', '📌', { name: 'dashboard-admin' })
+  } else {
+    if (has('estudiante')) {
+      add('perfil-estudiante', 'Perfil', '🎓', { name: 'dashboard-student' })
+      add('seguimiento-estudiante', 'Seguimiento', '📌', { name: 'dashboard-student' })
+    }
+    if (has('coordinador')) {
+      add('perfil-coordinador', 'Perfil', '🧩', { name: 'dashboard-coordinator' })
+      add('seguimiento-coordinador', 'Seguimiento', '📌', { name: 'dashboard-coordinator' })
+    }
+    if (has('evaluador')) {
+      add('perfil-evaluador', 'Perfil', '🧪', { name: 'dashboard-evaluator' })
+      add('seguimiento-evaluador', 'Seguimiento', '📌', { name: 'dashboard-evaluator' })
+    }
+    if (has('director')) {
+      add('perfil-director', 'Perfil', '📈', { name: 'dashboard-director' })
+      add('seguimiento-director', 'Seguimiento', '📌', { name: 'dashboard-director' })
+    }
+  }
+
+  return items
+})
 
 function handleNotificationClick(id: number) {
   markRead(id)
@@ -52,19 +108,29 @@ const notifIcons: Record<string, string> = {
       </div>
 
       <nav class="sidebar-nav">
-        <RouterLink to="/dashboard" class="nav-item">
+        <!-- Dashboard general -->
+        <RouterLink :to="{ name: 'dashboard' }" class="nav-item">
           <span class="nav-icon">&#9776;</span>
           <span v-if="isSidebarOpen" class="nav-text">Dashboard</span>
         </RouterLink>
 
-        <RouterLink v-if="can('users.view')" to="/users" class="nav-item">
-          <span class="nav-icon">&#128100;</span>
-          <span v-if="isSidebarOpen" class="nav-text">Usuarios</span>
-        </RouterLink>
+        <!-- Sección por roles (Perfil / Seguimiento) -->
+        <template v-for="item in roleNavItems" :key="item.key">
+          <RouterLink :to="item.to" class="nav-item">
+            <span class="nav-icon">{{ item.icon }}</span>
+            <span v-if="isSidebarOpen" class="nav-text">{{ item.label }}</span>
+          </RouterLink>
+        </template>
 
-        <RouterLink v-if="can('projects.view')" to="/projects" class="nav-item">
+        <!-- Sección global (Proyectos / Usuarios) -->
+        <RouterLink v-if="can('projects.view')" :to="{ name: 'projects' }" class="nav-item">
           <span class="nav-icon">&#128193;</span>
           <span v-if="isSidebarOpen" class="nav-text">Proyectos</span>
+        </RouterLink>
+
+        <RouterLink v-if="can('users.view')" :to="{ name: 'users' }" class="nav-item">
+          <span class="nav-icon">&#128100;</span>
+          <span v-if="isSidebarOpen" class="nav-text">Usuarios</span>
         </RouterLink>
       </nav>
 
@@ -73,8 +139,8 @@ const notifIcons: Record<string, string> = {
           <div class="user-name-row">
             <span class="user-name">{{ authStore.user?.name }}</span>
 
-            <!-- Campana de notificaciones — solo super-admin -->
-            <div v-if="isSuperAdmin" class="bell-wrap">
+            <!-- Campana de notificaciones — solo administrador -->
+            <div v-if="isAdmin" class="bell-wrap">
               <button class="bell-btn" @click="toggleNotifications" title="Notificaciones">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -121,7 +187,9 @@ const notifIcons: Record<string, string> = {
               <div v-if="showNotifications" class="notif-overlay" @click="showNotifications = false"></div>
             </div>
           </div>
-          <span class="user-role">{{ authStore.roles[0] || 'User' }}</span>
+          <span class="user-role">
+            {{ authStore.roles.map(formatRoleLabel).join(', ') || 'Sin rol' }}
+          </span>
         </div>
         <button class="logout-btn" @click="handleLogout">
           <span class="nav-icon">&#128682;</span>

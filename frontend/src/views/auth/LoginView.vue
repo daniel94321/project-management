@@ -9,6 +9,7 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const appName = import.meta.env.VITE_APP_NAME || 'Project Management'
+const registered = route.query.registered === '1'
 
 const form = reactive<LoginCredentials>({
   email: '',
@@ -51,12 +52,24 @@ async function handleSubmit() {
 function getError(field: string): string | undefined {
   return errors.value[field]?.[0]
 }
+
+function goToLanding() {
+  router.push({ name: 'landing' })
+}
+
+function goToRegister() {
+  router.push({ name: 'register' })
+}
 </script>
 
 <template>
   <div class="login-page">
     <div class="bg-orb orb-1" aria-hidden="true"></div>
     <div class="bg-orb orb-2" aria-hidden="true"></div>
+
+    <button type="button" class="home-fab" @click="goToLanding">
+      Volver al inicio
+    </button>
 
     <div class="login-shell">
       <aside class="brand-panel">
@@ -82,6 +95,10 @@ function getError(field: string): string | undefined {
         </div>
 
         <form @submit.prevent="handleSubmit" class="login-form">
+          <div v-if="registered" class="success-alert">
+            Cuenta creada correctamente. Ya puedes iniciar sesión.
+          </div>
+
           <div v-if="generalError" class="error-alert">
             {{ generalError }}
           </div>
@@ -139,6 +156,10 @@ function getError(field: string): string | undefined {
             <strong>Email:</strong> admin@example.com<br />
             <strong>Password:</strong> password
           </p>
+          <p class="helper-link">
+            ¿No tienes cuenta?
+            <button type="button" class="text-link" @click="goToRegister">Crear cuenta</button>
+          </p>
         </div>
       </div>
     </div>
@@ -176,6 +197,22 @@ function getError(field: string): string | undefined {
   filter: blur(24px);
   z-index: 0;
   animation: drift 12s ease-in-out infinite alternate;
+}
+
+.home-fab {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 2;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.72);
+  color: #0f172a;
+  padding: 0.6rem 0.9rem;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
 }
 
 .orb-1 {
@@ -347,6 +384,15 @@ function getError(field: string): string | undefined {
   font-size: 0.875rem;
 }
 
+.success-alert {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+  padding: 0.72rem 0.95rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+
 .checkbox-group {
   flex-direction: row;
 }
@@ -393,6 +439,24 @@ function getError(field: string): string | undefined {
   margin-top: 1.35rem;
   padding-top: 1rem;
   border-top: 1px solid #e2e8f0;
+}
+
+.helper-link {
+  margin-top: 0.65rem;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.text-link {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #b45309;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  font: inherit;
 }
 
 .demo-title {

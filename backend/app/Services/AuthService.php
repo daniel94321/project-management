@@ -24,7 +24,14 @@ class AuthService
             ]);
         }
 
+        /** @var User|null $user */
         $user = Auth::user();
+
+        if (!$user instanceof User) {
+            throw ValidationException::withMessages([
+                'email' => ['The provided credentials are incorrect.'],
+            ]);
+        }
 
         if (!$user->isActive()) {
             Auth::logout();
@@ -34,6 +41,29 @@ class AuthService
         }
 
         return $user;
+    }
+
+    /**
+     * Register a public user with the estudiante role.
+     *
+     * @param array<string, mixed> $data
+     */
+    public function register(array $data): User
+    {
+        $user = User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => $data['password'],
+            'status' => 'active',
+        ]);
+
+        $user->forceFill([
+            'email_verified_at' => now(),
+        ])->save();
+
+        $user->syncRoles(['estudiante']);
+
+        return $user->load('roles.permissions');
     }
 
     /**
@@ -57,9 +87,10 @@ class AuthService
      */
     public function getCurrentUser(): ?User
     {
+        /** @var User|null $user */
         $user = Auth::user();
 
-        if ($user) {
+        if ($user instanceof User) {
             $user->load('roles.permissions');
         }
 

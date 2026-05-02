@@ -109,12 +109,11 @@ class UserService
      */
     public function syncUserRoles(User $user, array $roles): void
     {
-        // Prevent removing super-admin role from last super-admin
-        if ($user->hasRole('super-admin') && !in_array('super-admin', $roles)) {
-            $superAdminCount = User::role('super-admin')->count();
-            if ($superAdminCount <= 1) {
+        if ($user->hasRole('administrador') && !in_array('administrador', $roles, true)) {
+            $adminCount = User::role('administrador')->count();
+            if ($adminCount <= 1) {
                 throw ValidationException::withMessages([
-                    'roles' => ['Cannot remove super-admin role from the last super-admin user.'],
+                    'roles' => ['No se puede quitar el rol de administrador al ultimo usuario con acceso administrativo.'],
                 ]);
             }
         }
@@ -136,12 +135,11 @@ class UserService
             ]);
         }
 
-        // Prevent deletion of last super-admin
-        if ($user->hasRole('super-admin')) {
-            $superAdminCount = User::role('super-admin')->count();
-            if ($superAdminCount <= 1) {
+        if ($user->hasRole('administrador')) {
+            $adminCount = User::role('administrador')->count();
+            if ($adminCount <= 1) {
                 throw ValidationException::withMessages([
-                    'user' => ['Cannot delete the last super-admin user.'],
+                    'user' => ['No se puede eliminar al ultimo usuario administrador.'],
                 ]);
             }
         }

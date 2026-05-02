@@ -24,8 +24,10 @@ export function usePermissions() {
     return authStore.hasAnyRole(roles)
   }
 
-  const isSuperAdmin = computed(() => authStore.hasRole('super-admin'))
-  const isAdmin = computed(() => authStore.hasAnyRole(['super-admin', 'admin']))
+  const isAdmin = computed(() => authStore.hasRole('administrador'))
+  const isCoordinator = computed(() => authStore.hasRole('coordinador'))
+  const isEvaluator = computed(() => authStore.hasRole('evaluador'))
+  const isDirector = computed(() => authStore.hasRole('director'))
 
   return {
     can,
@@ -33,7 +35,9 @@ export function usePermissions() {
     canAll,
     hasRole,
     hasAnyRole,
-    isSuperAdmin,
     isAdmin,
+    isCoordinator,
+    isEvaluator,
+    isDirector,
   }
 }
