@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Project;
+use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class ProjectService
@@ -35,16 +37,28 @@ class ProjectService
         return $query->paginate($perPage);
     }
 
-    public function createProject(array $data, string $ownerId): Project
+    public function createProject(array $data, User $owner): Project
     {
+        $isStudent = $owner->hasRole('estudiante');
+        $startDate = $data['start_date'] ?? null;
+
         return Project::create([
-            ...$data,
-            'owner_id' => $ownerId,
+            'name'        => $data['name'],
+            'description' => $data['description'] ?? null,
+            'status'      => $isStudent ? 'planning' : ($data['status'] ?? 'planning'),
+            'priority'    => $isStudent ? 'medium' : ($data['priority'] ?? 'medium'),
+            'start_date'  => $startDate,
+            'end_date'    => $this->calculateEndDate($startDate),
+            'owner_id'    => $owner->id,
         ]);
     }
 
     public function updateProject(Project $project, array $data): Project
     {
+        if (array_key_exists('start_date', $data)) {
+            $data['end_date'] = $this->calculateEndDate($data['start_date']);
+        }
+
         $project->update($data);
 
         return $project->fresh('owner');
@@ -53,5 +67,18 @@ class ProjectService
     public function deleteProject(Project $project): void
     {
         $project->delete();
+    }
+
+    private function calculateEndDate(?string $startDate): ?string
+    {
+        if (! $startDate) {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($startDate)->addDays(180)->toDateString();
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }

@@ -10,7 +10,13 @@ class UpdateProjectRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->can('projects.update');
+        $user = $this->user();
+
+        if ($user === null || $user->hasRole('estudiante')) {
+            return false;
+        }
+
+        return $user->can('projects.update');
     }
 
     public function rules(): array

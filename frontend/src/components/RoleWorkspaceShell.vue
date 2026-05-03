@@ -44,6 +44,8 @@ defineProps<{
           <p>{{ card.text }}</p>
         </article>
       </div>
+
+      <slot></slot>
     </section>
   </DashboardLayout>
 </template>

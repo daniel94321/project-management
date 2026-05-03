@@ -56,6 +56,7 @@ class RoleSeeder extends Seeder
             ],
             'estudiante' => [
                 'projects.view',
+                'projects.create',
                 'tasks.view',
                 'tasks.create',
                 'tasks.update',

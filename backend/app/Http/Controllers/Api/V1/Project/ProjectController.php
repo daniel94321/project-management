@@ -32,7 +32,7 @@ class ProjectController extends Controller
     {
         $project = $this->projectService->createProject(
             $request->validated(),
-            $request->user()->id
+            $request->user()
         );
 
         return response()->json([

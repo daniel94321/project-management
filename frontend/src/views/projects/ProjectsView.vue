@@ -1,13 +1,22 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import apiClient from '@/api/axios'
 import { usePermissions } from '@/composables/usePermissions'
 import { useToast } from '@/composables/useToast'
+import { useAuthStore } from '@/stores/auth'
 import type { Project, ProjectFilters, ProjectPayload, PaginatedResponse } from '@/types'
 
-const { can } = usePermissions()
+const { can, hasRole } = usePermissions()
+const authStore = useAuthStore()
 const toast = useToast()
+
+// Permitir crear proyectos si tiene permiso o es estudiante
+const canCreateProject = computed(() => can('projects.create') || hasRole('estudiante'))
+
+// Solo directores y evaluadores pueden cambiar estado y prioridad
+const canEditStatusAndPriority = computed(() => can('projects.edit.status') || hasRole('director') || hasRole('evaluador'))
+const projectDurationDays = 180
 
 // ─── Lista ────────────────────────────────────────────────────────────────────
 const projects   = ref<Project[]>([])
@@ -68,6 +77,20 @@ const form = ref<ProjectPayload>({
   start_date: '', end_date: '',
 })
 
+function calculateEndDate(startDate: string) {
+  if (!startDate) return ''
+
+  const date = new Date(`${startDate}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return ''
+
+  date.setDate(date.getDate() + projectDurationDays)
+  return date.toISOString().slice(0, 10)
+}
+
+watch(() => form.value.start_date, (startDate) => {
+  form.value.end_date = calculateEndDate(startDate ?? '')
+})
+
 function openCreateModal() {
   isEditing.value     = false
   editingProject.value = null
@@ -77,6 +100,11 @@ function openCreateModal() {
 }
 
 function openEditModal(project: Project) {
+  if (hasRole('estudiante')) {
+    toast.error('El estudiante no puede editar el proyecto. Usa la opción de solicitar revisión.')
+    return
+  }
+
   isEditing.value     = true
   editingProject.value = project
   formErrors.value    = {}
@@ -86,7 +114,7 @@ function openEditModal(project: Project) {
     status:      project.status,
     priority:    project.priority,
     start_date:  project.start_date ?? '',
-    end_date:    project.end_date ?? '',
+    end_date:    project.start_date ? calculateEndDate(project.start_date) : (project.end_date ?? ''),
   }
   showModal.value = true
 }
@@ -118,6 +146,53 @@ async function submitForm() {
     else toast.error('Ocurrió un error inesperado. Intenta de nuevo.')
   } finally {
     isSaving.value = false
+  }
+}
+
+// ─── Comunicación / Solicitud de revisión ───────────────────────────────────
+const showCommunicationModal = ref(false)
+const communicationProject = ref<Project | null>(null)
+const communicationErrors = ref<Record<string, string[]>>({})
+const communicationForm = ref({ message: '' })
+const isSendingCommunication = ref(false)
+
+function canStudentRequestReview(project: Project) {
+  return hasRole('estudiante') && authStore.user?.id === project.owner?.id
+}
+
+function openCommunicationModal(project: Project) {
+  communicationProject.value = project
+  communicationErrors.value = {}
+  communicationForm.value = { message: '' }
+  showCommunicationModal.value = true
+}
+
+function closeCommunicationModal() {
+  showCommunicationModal.value = false
+  communicationProject.value = null
+}
+
+async function submitCommunication() {
+  if (!communicationProject.value) return
+
+  isSendingCommunication.value = true
+  communicationErrors.value = {}
+
+  try {
+    await apiClient.post(`/projects/${communicationProject.value.id}/communications`, {
+      message: communicationForm.value.message,
+    })
+
+    toast.success('La solicitud fue enviada al coordinador y al administrador.')
+    closeCommunicationModal()
+  } catch (err: any) {
+    if (err.response?.status === 422) {
+      communicationErrors.value = err.response.data.errors ?? {}
+    } else {
+      toast.error('No se pudo enviar la solicitud. Intenta de nuevo.')
+    }
+  } finally {
+    isSendingCommunication.value = false
   }
 }
 
@@ -171,7 +246,7 @@ onMounted(fetchProjects)
     <template #header>
       <div class="header-content">
         <h1>Proyectos</h1>
-        <button v-if="can('projects.create')" class="btn-primary" @click="openCreateModal">
+        <button v-if="canCreateProject" class="btn-primary" @click="openCreateModal">
           + Nuevo Proyecto
         </button>
       </div>
@@ -218,7 +293,7 @@ onMounted(fetchProjects)
               <th>Responsable</th>
               <th>Inicio</th>
               <th>Fin</th>
-              <th v-if="can('projects.update') || can('projects.delete')">Acciones</th>
+              <th v-if="can('projects.update') || can('projects.delete') || hasRole('estudiante')">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -237,10 +312,11 @@ onMounted(fetchProjects)
               <td class="muted">{{ project.owner?.name ?? '-' }}</td>
               <td class="muted">{{ formatDate(project.start_date) }}</td>
               <td class="muted">{{ formatDate(project.end_date) }}</td>
-              <td v-if="can('projects.update') || can('projects.delete')">
+              <td v-if="can('projects.update') || can('projects.delete') || canStudentRequestReview(project)">
                 <div class="actions">
                   <button v-if="can('projects.update')" class="btn-edit" @click="openEditModal(project)">✏️ Editar</button>
                   <button v-if="can('projects.delete')" class="btn-delete" @click="openDeleteConfirm(project)">🗑️ Eliminar</button>
+                  <button v-if="canStudentRequestReview(project)" class="btn-request" @click="openCommunicationModal(project)">📩 Solicitar revisión</button>
                 </div>
               </td>
             </tr>
@@ -249,7 +325,7 @@ onMounted(fetchProjects)
 
         <div v-else class="empty">
           <p>No se encontraron proyectos.</p>
-          <p v-if="can('projects.create')" class="empty-hint">
+          <p v-if="canCreateProject" class="empty-hint">
             Haz clic en <strong>+ Nuevo Proyecto</strong> para comenzar.
           </p>
         </div>
@@ -289,20 +365,22 @@ onMounted(fetchProjects)
             <div class="form-row">
               <div class="form-group">
                 <label>Estado</label>
-                <select v-model="form.status">
+                <select v-model="form.status" :disabled="!canEditStatusAndPriority">
                   <option value="planning">Planificación</option>
                   <option value="active">Activo</option>
                   <option value="completed">Completado</option>
                   <option value="cancelled">Cancelado</option>
                 </select>
+                <p v-if="!canEditStatusAndPriority" class="info-msg">※ Solo directores y evaluadores pueden cambiar el estado</p>
               </div>
               <div class="form-group">
                 <label>Prioridad</label>
-                <select v-model="form.priority">
+                <select v-model="form.priority" :disabled="!canEditStatusAndPriority">
                   <option value="low">Baja</option>
                   <option value="medium">Media</option>
                   <option value="high">Alta</option>
                 </select>
+                <p v-if="!canEditStatusAndPriority" class="info-msg">※ Solo directores y evaluadores pueden cambiar la prioridad</p>
               </div>
             </div>
 
@@ -314,10 +392,9 @@ onMounted(fetchProjects)
                 <p v-if="formErrors.start_date" class="error-msg">{{ formErrors.start_date[0] }}</p>
               </div>
               <div class="form-group">
-                <label>Fecha de fin</label>
-                <input v-model="form.end_date" type="date"
-                  :class="{ 'input-error': formErrors.end_date }" />
-                <p v-if="formErrors.end_date" class="error-msg">{{ formErrors.end_date[0] }}</p>
+                <label>Fecha de fin estimada</label>
+                <input :value="form.end_date" type="date" readonly />
+                <p class="info-msg">※ Se calcula automáticamente con una duración de 180 días</p>
               </div>
             </div>
 
@@ -350,6 +427,40 @@ onMounted(fetchProjects)
               </button>
             </div>
           </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- ─── Modal Comunicación ─────────────────────────────────────────────── -->
+    <Teleport to="body">
+      <div v-if="showCommunicationModal" class="modal-overlay" @click.self="closeCommunicationModal">
+        <div class="modal modal-md">
+          <div class="modal-header">
+            <h2>Solicitar revisión</h2>
+            <button class="modal-close" @click="closeCommunicationModal">✕</button>
+          </div>
+          <form class="modal-body" @submit.prevent="submitCommunication">
+            <div class="form-group">
+              <label>Proyecto</label>
+              <input :value="communicationProject?.name ?? ''" type="text" readonly />
+            </div>
+            <div class="form-group">
+              <label>Mensaje</label>
+              <textarea
+                v-model="communicationForm.message"
+                rows="5"
+                placeholder="Explica por qué necesitas revisión o apoyo del coordinador/admin..."
+                :class="{ 'input-error': communicationErrors.message }"
+              ></textarea>
+              <p v-if="communicationErrors.message" class="error-msg">{{ communicationErrors.message[0] }}</p>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn-cancel" @click="closeCommunicationModal">Cancelar</button>
+              <button type="submit" class="btn-save" :disabled="isSendingCommunication">
+                {{ isSendingCommunication ? 'Enviando...' : 'Enviar solicitud' }}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </Teleport>
@@ -402,6 +513,8 @@ onMounted(fetchProjects)
 .btn-edit:hover { background: #bee3f8; }
 .btn-delete { background: #fff5f5; color: #e53e3e; border: 1px solid #fed7d7; padding: .3rem .7rem; border-radius: 4px; cursor: pointer; font-size: .8rem; font-weight: 500; }
 .btn-delete:hover { background: #fed7d7; }
+.btn-request { background: #f0fff4; color: #2f855a; border: 1px solid #c6f6d5; padding: .3rem .7rem; border-radius: 4px; cursor: pointer; font-size: .8rem; font-weight: 500; }
+.btn-request:hover { background: #c6f6d5; }
 
 .loading { padding: 3rem; text-align: center; color: #718096; display: flex; align-items: center; justify-content: center; gap: .75rem; }
 .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid #e2e8f0; border-top-color: #667eea; border-radius: 50%; animation: spin .7s linear infinite; }
@@ -418,6 +531,7 @@ onMounted(fetchProjects)
 /* Modal */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
 .modal { background: white; border-radius: 12px; width: 100%; max-width: 560px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,.2); overflow: hidden; }
+.modal-md { max-width: 640px; }
 .modal-sm { max-width: 400px; }
 .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.5rem; border-bottom: 1px solid #e2e8f0; background: #f7fafc; }
 .modal-header h2 { margin: 0; font-size: 1.1rem; color: #2d3748; }
@@ -434,10 +548,12 @@ onMounted(fetchProjects)
   padding: .55rem .85rem; border: 1px solid #e2e8f0; border-radius: 6px; font-size: .95rem; outline: none; transition: border-color .15s; font-family: inherit;
 }
 .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #667eea; box-shadow: 0 0 0 2px rgba(102,126,234,.15); }
+.form-group input:disabled, .form-group select:disabled { background: #f7fafc; color: #a0aec0; cursor: not-allowed; opacity: .65; }
 .form-group textarea { resize: vertical; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 .input-error { border-color: #e53e3e !important; }
 .error-msg { color: #e53e3e; font-size: .8rem; margin: 0; }
+.info-msg { color: #744210; font-size: .75rem; margin: 0; background: #fffff0; padding: .35rem .6rem; border-radius: 4px; border-left: 2px solid #ecc94b; }
 .required { color: #e53e3e; margin-left: 2px; }
 
 .modal-footer { display: flex; justify-content: flex-end; gap: .75rem; padding-top: .5rem; }

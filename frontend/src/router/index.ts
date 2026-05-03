@@ -40,7 +40,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/dashboard/administrador',
     name: 'dashboard-admin',
-    component: () => import('@/views/roles/AdministratorView.vue'),
+    component: () => import('@/views/roles/AdministratorProfileView.vue'),
     meta: {
       requiresAuth: true,
       role: ['administrador'],
@@ -48,9 +48,29 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/dashboard/administrador/perfil',
+    name: 'dashboard-admin-profile',
+    component: () => import('@/views/roles/AdministratorProfileView.vue'),
+    meta: {
+      requiresAuth: true,
+      role: ['administrador'],
+      title: 'Perfil - Administración',
+    },
+  },
+  {
+    path: '/dashboard/administrador/seguimiento',
+    name: 'dashboard-admin-tracking',
+    component: () => import('@/views/roles/AdministratorTrackingView.vue'),
+    meta: {
+      requiresAuth: true,
+      role: ['administrador'],
+      title: 'Seguimiento - Administración',
+    },
+  },
+  {
     path: '/dashboard/coordinador',
     name: 'dashboard-coordinator',
-    component: () => import('@/views/roles/CoordinatorView.vue'),
+    component: () => import('@/views/roles/CoordinatorProfileView.vue'),
     meta: {
       requiresAuth: true,
       role: ['administrador', 'coordinador'],
@@ -58,9 +78,29 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/dashboard/coordinador/perfil',
+    name: 'dashboard-coordinator-profile',
+    component: () => import('@/views/roles/CoordinatorProfileView.vue'),
+    meta: {
+      requiresAuth: true,
+      role: ['administrador', 'coordinador'],
+      title: 'Perfil - Coordinación',
+    },
+  },
+  {
+    path: '/dashboard/coordinador/seguimiento',
+    name: 'dashboard-coordinator-tracking',
+    component: () => import('@/views/roles/CoordinatorTrackingView.vue'),
+    meta: {
+      requiresAuth: true,
+      role: ['administrador', 'coordinador'],
+      title: 'Seguimiento - Coordinación',
+    },
+  },
+  {
     path: '/dashboard/evaluador',
     name: 'dashboard-evaluator',
-    component: () => import('@/views/roles/EvaluatorView.vue'),
+    component: () => import('@/views/roles/EvaluatorProfileView.vue'),
     meta: {
       requiresAuth: true,
       role: ['administrador', 'evaluador'],
@@ -68,9 +108,29 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/dashboard/evaluador/perfil',
+    name: 'dashboard-evaluator-profile',
+    component: () => import('@/views/roles/EvaluatorProfileView.vue'),
+    meta: {
+      requiresAuth: true,
+      role: ['administrador', 'evaluador'],
+      title: 'Perfil - Evaluación',
+    },
+  },
+  {
+    path: '/dashboard/evaluador/seguimiento',
+    name: 'dashboard-evaluator-tracking',
+    component: () => import('@/views/roles/EvaluatorTrackingView.vue'),
+    meta: {
+      requiresAuth: true,
+      role: ['administrador', 'evaluador'],
+      title: 'Seguimiento - Evaluación',
+    },
+  },
+  {
     path: '/dashboard/director',
     name: 'dashboard-director',
-    component: () => import('@/views/roles/DirectorView.vue'),
+    component: () => import('@/views/roles/DirectorProfileView.vue'),
     meta: {
       requiresAuth: true,
       role: ['administrador', 'director'],
@@ -78,13 +138,53 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/dashboard/director/perfil',
+    name: 'dashboard-director-profile',
+    component: () => import('@/views/roles/DirectorProfileView.vue'),
+    meta: {
+      requiresAuth: true,
+      role: ['administrador', 'director'],
+      title: 'Perfil - Dirección',
+    },
+  },
+  {
+    path: '/dashboard/director/seguimiento',
+    name: 'dashboard-director-tracking',
+    component: () => import('@/views/roles/DirectorTrackingView.vue'),
+    meta: {
+      requiresAuth: true,
+      role: ['administrador', 'director'],
+      title: 'Seguimiento - Dirección',
+    },
+  },
+  {
     path: '/dashboard/estudiante',
     name: 'dashboard-student',
-    component: () => import('@/views/roles/StudentView.vue'),
+    component: () => import('@/views/roles/StudentProfileView.vue'),
     meta: {
       requiresAuth: true,
       role: ['administrador', 'estudiante'],
       title: 'Estudiante',
+    },
+  },
+  {
+    path: '/dashboard/estudiante/perfil',
+    name: 'dashboard-student-profile',
+    component: () => import('@/views/roles/StudentProfileView.vue'),
+    meta: {
+      requiresAuth: true,
+      role: ['administrador', 'estudiante'],
+      title: 'Perfil - Estudiante',
+    },
+  },
+  {
+    path: '/dashboard/estudiante/seguimiento',
+    name: 'dashboard-student-tracking',
+    component: () => import('@/views/roles/StudentTrackingView.vue'),
+    meta: {
+      requiresAuth: true,
+      role: ['administrador', 'estudiante'],
+      title: 'Seguimiento - Estudiante',
     },
   },
   {
@@ -146,6 +246,11 @@ router.beforeEach(async (to, _from) => {
 
   // Check if route is for guests only
   if (to.meta.guest && authStore.isAuthenticated) {
+    return { name: 'dashboard' }
+  }
+
+  // Redirect authenticated users from landing page to dashboard
+  if (to.name === 'landing' && authStore.isAuthenticated) {
     return { name: 'dashboard' }
   }
 

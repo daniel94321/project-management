@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Project\ProjectController;
+use App\Http\Controllers\Api\V1\Project\ProjectCommunicationController;
 use App\Http\Controllers\Api\V1\Role\RoleController;
 use App\Http\Controllers\Api\V1\User\UserController;
 use Illuminate\Support\Facades\Route;
@@ -68,7 +69,6 @@ Route::prefix('v1')->group(function () {
         });
 
         Route::post('projects', [ProjectController::class, 'store'])
-            ->middleware('permission:projects.create')
             ->name('projects.store');
 
         Route::put('projects/{project}', [ProjectController::class, 'update'])
@@ -78,5 +78,11 @@ Route::prefix('v1')->group(function () {
         Route::delete('projects/{project}', [ProjectController::class, 'destroy'])
             ->middleware('permission:projects.delete')
             ->name('projects.destroy');
+
+        Route::get('project-communications', [ProjectCommunicationController::class, 'index'])
+            ->name('project-communications.index');
+
+        Route::post('projects/{project}/communications', [ProjectCommunicationController::class, 'store'])
+            ->name('projects.communications.store');
     });
 });

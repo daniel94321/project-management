@@ -121,3 +121,20 @@ export interface ProjectPayload {
   start_date?: string
   end_date?: string
 }
+
+export interface ProjectCommunication {
+  id: string
+  project: {
+    id: string
+    name: string
+    status: Project['status']
+    priority: Project['priority']
+  }
+  sender: {
+    id: string
+    name: string
+    email: string
+  }
+  message: string
+  created_at: string
+}

@@ -59,24 +59,24 @@ const roleNavItems = computed<NavItem[]>(() => {
   }
 
   if (isAdminRole) {
-    add('perfil-administrador', 'Perfil', '🧭', { name: 'dashboard-admin' })
-    add('seguimiento-administrador', 'Seguimiento', '📌', { name: 'dashboard-admin' })
+    add('perfil-administrador', 'Perfil', '🧭', { name: 'dashboard-admin-profile' })
+    add('seguimiento-administrador', 'Seguimiento', '📌', { name: 'dashboard-admin-tracking' })
   } else {
     if (has('estudiante')) {
-      add('perfil-estudiante', 'Perfil', '🎓', { name: 'dashboard-student' })
-      add('seguimiento-estudiante', 'Seguimiento', '📌', { name: 'dashboard-student' })
+      add('perfil-estudiante', 'Perfil', '🎓', { name: 'dashboard-student-profile' })
+      add('seguimiento-estudiante', 'Seguimiento', '📌', { name: 'dashboard-student-tracking' })
     }
     if (has('coordinador')) {
-      add('perfil-coordinador', 'Perfil', '🧩', { name: 'dashboard-coordinator' })
-      add('seguimiento-coordinador', 'Seguimiento', '📌', { name: 'dashboard-coordinator' })
+      add('perfil-coordinador', 'Perfil', '🧩', { name: 'dashboard-coordinator-profile' })
+      add('seguimiento-coordinador', 'Seguimiento', '📌', { name: 'dashboard-coordinator-tracking' })
     }
     if (has('evaluador')) {
-      add('perfil-evaluador', 'Perfil', '🧪', { name: 'dashboard-evaluator' })
-      add('seguimiento-evaluador', 'Seguimiento', '📌', { name: 'dashboard-evaluator' })
+      add('perfil-evaluador', 'Perfil', '🧪', { name: 'dashboard-evaluator-profile' })
+      add('seguimiento-evaluador', 'Seguimiento', '📌', { name: 'dashboard-evaluator-tracking' })
     }
     if (has('director')) {
-      add('perfil-director', 'Perfil', '📈', { name: 'dashboard-director' })
-      add('seguimiento-director', 'Seguimiento', '📌', { name: 'dashboard-director' })
+      add('perfil-director', 'Perfil', '📈', { name: 'dashboard-director-profile' })
+      add('seguimiento-director', 'Seguimiento', '📌', { name: 'dashboard-director-tracking' })
     }
   }
 
