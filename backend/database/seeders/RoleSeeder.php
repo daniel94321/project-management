@@ -44,12 +44,14 @@ class RoleSeeder extends Seeder
             ],
             'evaluador' => [
                 'projects.view',
+                'projects.update',
                 'tasks.view',
                 'tasks.update',
             ],
             'director' => [
                 'users.view',
                 'projects.view',
+                'projects.update',
                 'tasks.view',
                 'roles.view',
                 'permissions.view',

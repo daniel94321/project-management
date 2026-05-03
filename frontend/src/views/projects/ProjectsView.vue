@@ -13,6 +13,7 @@ const toast = useToast()
 
 // Permitir crear proyectos si tiene permiso o es estudiante
 const canCreateProject = computed(() => can('projects.create') || hasRole('estudiante'))
+const canEditProject = computed(() => can('projects.update') || hasRole('director') || hasRole('evaluador'))
 
 // Solo directores y evaluadores pueden cambiar estado y prioridad
 const canEditStatusAndPriority = computed(() => can('projects.edit.status') || hasRole('director') || hasRole('evaluador'))
@@ -153,17 +154,28 @@ async function submitForm() {
 const showCommunicationModal = ref(false)
 const communicationProject = ref<Project | null>(null)
 const communicationErrors = ref<Record<string, string[]>>({})
-const communicationForm = ref({ message: '' })
+const communicationForm = ref({ request_type: 'modify_project', message: '' })
 const isSendingCommunication = ref(false)
 
+const requestTypeHint: Record<string, string> = {
+  modify_project: 'Úsalo para cambios en el contenido, enfoque o ajustes generales del proyecto.',
+  postpone_project: 'Úsalo cuando necesites mover el proyecto a una nueva fecha por una causa justificada.',
+  change_scope: 'Úsalo cuando el proyecto deba reducirse, redefinirse o ampliar su alcance.',
+  other: 'Úsalo para situaciones especiales que no encajan en las categorías anteriores.',
+}
+
 function canStudentRequestReview(project: Project) {
-  return hasRole('estudiante') && authStore.user?.id === project.owner?.id
+  return hasRole('estudiante') && authStore.user?.id === project.owner?.id && !project.student_request_pending
+}
+
+function hasPendingStudentRequest(project: Project) {
+  return hasRole('estudiante') && authStore.user?.id === project.owner?.id && !!project.student_request_pending
 }
 
 function openCommunicationModal(project: Project) {
   communicationProject.value = project
   communicationErrors.value = {}
-  communicationForm.value = { message: '' }
+  communicationForm.value = { request_type: 'modify_project', message: '' }
   showCommunicationModal.value = true
 }
 
@@ -180,6 +192,7 @@ async function submitCommunication() {
 
   try {
     await apiClient.post(`/projects/${communicationProject.value.id}/communications`, {
+      request_type: communicationForm.value.request_type,
       message: communicationForm.value.message,
     })
 
@@ -293,7 +306,7 @@ onMounted(fetchProjects)
               <th>Responsable</th>
               <th>Inicio</th>
               <th>Fin</th>
-              <th v-if="can('projects.update') || can('projects.delete') || hasRole('estudiante')">Acciones</th>
+              <th v-if="canEditProject || can('projects.delete') || hasRole('estudiante')">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -312,11 +325,14 @@ onMounted(fetchProjects)
               <td class="muted">{{ project.owner?.name ?? '-' }}</td>
               <td class="muted">{{ formatDate(project.start_date) }}</td>
               <td class="muted">{{ formatDate(project.end_date) }}</td>
-              <td v-if="can('projects.update') || can('projects.delete') || canStudentRequestReview(project)">
+              <td v-if="canEditProject || can('projects.delete') || canStudentRequestReview(project)">
                 <div class="actions">
-                  <button v-if="can('projects.update')" class="btn-edit" @click="openEditModal(project)">✏️ Editar</button>
+                  <button v-if="canEditProject" class="btn-edit" @click="openEditModal(project)">✏️ Editar</button>
                   <button v-if="can('projects.delete')" class="btn-delete" @click="openDeleteConfirm(project)">🗑️ Eliminar</button>
                   <button v-if="canStudentRequestReview(project)" class="btn-request" @click="openCommunicationModal(project)">📩 Solicitar revisión</button>
+                  <button v-else-if="hasPendingStudentRequest(project)" class="btn-request btn-request-disabled" disabled>
+                    ⏳ Solicitud pendiente
+                  </button>
                 </div>
               </td>
             </tr>
@@ -445,11 +461,27 @@ onMounted(fetchProjects)
               <input :value="communicationProject?.name ?? ''" type="text" readonly />
             </div>
             <div class="form-group">
+              <label>Tipo de solicitud</label>
+              <select v-model="communicationForm.request_type">
+                <option value="modify_project">Modificar proyecto</option>
+                <option value="postpone_project">Aplazar proyecto</option>
+                <option value="change_scope">Ajustar alcance</option>
+                <option value="other">Otro</option>
+              </select>
+              <p class="info-msg">{{ requestTypeHint[communicationForm.request_type] }}</p>
+            </div>
+
+            <div class="form-group">
               <label>Mensaje</label>
               <textarea
                 v-model="communicationForm.message"
                 rows="5"
-                placeholder="Explica por qué necesitas revisión o apoyo del coordinador/admin..."
+                :placeholder="communicationForm.request_type === 'postpone_project'
+                  ? 'Explica por qué necesitas aplazar el proyecto y el nuevo plazo sugerido...'
+                  : communicationForm.request_type === 'change_scope'
+                    ? 'Describe qué alcance deseas ajustar y por qué...'
+                    : 'Explica el cambio que necesitas para el proyecto...'
+                "
                 :class="{ 'input-error': communicationErrors.message }"
               ></textarea>
               <p v-if="communicationErrors.message" class="error-msg">{{ communicationErrors.message[0] }}</p>
@@ -515,6 +547,7 @@ onMounted(fetchProjects)
 .btn-delete:hover { background: #fed7d7; }
 .btn-request { background: #f0fff4; color: #2f855a; border: 1px solid #c6f6d5; padding: .3rem .7rem; border-radius: 4px; cursor: pointer; font-size: .8rem; font-weight: 500; }
 .btn-request:hover { background: #c6f6d5; }
+.btn-request-disabled { opacity: .75; cursor: not-allowed; }
 
 .loading { padding: 3rem; text-align: center; color: #718096; display: flex; align-items: center; justify-content: center; gap: .75rem; }
 .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid #e2e8f0; border-top-color: #667eea; border-radius: 50%; animation: spin .7s linear infinite; }

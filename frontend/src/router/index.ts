@@ -68,6 +68,16 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/dashboard/administrador/seguimiento/solicitudes/:id',
+    name: 'dashboard-admin-communication-detail',
+    component: () => import('@/views/communications/ProjectCommunicationDetailView.vue'),
+    meta: {
+      requiresAuth: true,
+      role: ['administrador'],
+      title: 'Detalle de solicitud - Administración',
+    },
+  },
+  {
     path: '/dashboard/coordinador',
     name: 'dashboard-coordinator',
     component: () => import('@/views/roles/CoordinatorProfileView.vue'),
@@ -95,6 +105,16 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: true,
       role: ['administrador', 'coordinador'],
       title: 'Seguimiento - Coordinación',
+    },
+  },
+  {
+    path: '/dashboard/coordinador/seguimiento/solicitudes/:id',
+    name: 'dashboard-coordinator-communication-detail',
+    component: () => import('@/views/communications/ProjectCommunicationDetailView.vue'),
+    meta: {
+      requiresAuth: true,
+      role: ['administrador', 'coordinador'],
+      title: 'Detalle de solicitud - Coordinación',
     },
   },
   {

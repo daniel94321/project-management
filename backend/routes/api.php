@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Auth\AuthController;
+use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\Project\ProjectController;
 use App\Http\Controllers\Api\V1\Project\ProjectCommunicationController;
 use App\Http\Controllers\Api\V1\Role\RoleController;
@@ -40,6 +41,10 @@ Route::prefix('v1')->group(function () {
             Route::post('logout', [AuthController::class, 'logout'])->name('auth.logout');
             Route::get('me', [AuthController::class, 'me'])->name('auth.me');
         });
+
+        Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+        Route::patch('notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
+        Route::patch('notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
 
         // Roles (for forms)
         Route::get('roles', [RoleController::class, 'index'])->name('roles.index');
@@ -81,6 +86,12 @@ Route::prefix('v1')->group(function () {
 
         Route::get('project-communications', [ProjectCommunicationController::class, 'index'])
             ->name('project-communications.index');
+
+        Route::get('project-communications/{communication}', [ProjectCommunicationController::class, 'show'])
+            ->name('project-communications.show');
+
+        Route::patch('project-communications/{communication}', [ProjectCommunicationController::class, 'resolve'])
+            ->name('project-communications.resolve');
 
         Route::post('projects/{project}/communications', [ProjectCommunicationController::class, 'store'])
             ->name('projects.communications.store');

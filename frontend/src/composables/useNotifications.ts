@@ -1,57 +1,53 @@
 import { ref, computed } from 'vue'
+import apiClient from '@/api/axios'
 
 export type NotificationType = 'info' | 'success' | 'warning' | 'error'
 
 export interface AppNotification {
-  id: number
+  id: string
   title: string
   message: string
   type: NotificationType
   read: boolean
   time: string
+  data?: Record<string, unknown>
 }
 
-const notifications = ref<AppNotification[]>([
-  {
-    id: 1,
-    title: 'Sesión iniciada',
-    message: 'Has ingresado como Super Administrador.',
-    type: 'info',
-    read: false,
-    time: 'Ahora',
-  },
-  {
-    id: 2,
-    title: 'Acceso total habilitado',
-    message: 'Tienes permisos completos sobre el sistema.',
-    type: 'success',
-    read: false,
-    time: 'Ahora',
-  },
-])
+const notifications = ref<AppNotification[]>([])
+const unreadCount = computed(() => notifications.value.filter(n => !n.read).length)
 
-let nextId = 3
+function mapNotification(notification: any): AppNotification {
+  return {
+    id: String(notification.id),
+    title: notification.title ?? 'Notificación',
+    message: notification.message ?? '',
+    type: notification.type ?? 'info',
+    read: Boolean(notification.read),
+    time: notification.time ?? 'Ahora',
+    data: notification.data ?? {},
+  }
+}
+
+async function fetchNotifications() {
+  const response = await apiClient.get<{ notifications: AppNotification[]; unread_count: number }>('/notifications')
+  notifications.value = response.data.notifications.map(mapNotification)
+}
 
 export function useNotifications() {
-  const unreadCount = computed(() => notifications.value.filter(n => !n.read).length)
+  async function refreshNotifications() {
+    await fetchNotifications()
+  }
 
-  function markAllRead() {
+  async function markAllRead() {
+    await apiClient.patch('/notifications/read-all')
     notifications.value.forEach(n => (n.read = true))
   }
 
-  function markRead(id: number) {
+  async function markRead(id: string) {
+    await apiClient.patch(`/notifications/${id}/read`)
     const n = notifications.value.find(n => n.id === id)
     if (n) n.read = true
   }
 
-  function addNotification(data: Omit<AppNotification, 'id' | 'read' | 'time'>) {
-    notifications.value.unshift({
-      ...data,
-      id: nextId++,
-      read: false,
-      time: 'Ahora',
-    })
-  }
-
-  return { notifications, unreadCount, markAllRead, markRead, addNotification }
+  return { notifications, unreadCount, markAllRead, markRead, refreshNotifications }
 }

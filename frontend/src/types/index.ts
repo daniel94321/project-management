@@ -98,6 +98,8 @@ export interface Project {
   priority: 'low' | 'medium' | 'high'
   start_date: string | null
   end_date: string | null
+  student_request_pending?: boolean
+  student_request_id?: string | null
   owner: { id: string; name: string } | null
   created_at: string
   updated_at: string
@@ -124,6 +126,7 @@ export interface ProjectPayload {
 
 export interface ProjectCommunication {
   id: string
+  request_type: string
   project: {
     id: string
     name: string

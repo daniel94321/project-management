@@ -1,10 +1,18 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
+import { RouterLink } from 'vue-router'
 import apiClient from '@/api/axios'
+import { useAuthStore } from '@/stores/auth'
 import type { PaginatedResponse, ProjectCommunication } from '@/types'
 
 const communications = ref<ProjectCommunication[]>([])
 const isLoading = ref(false)
+const authStore = useAuthStore()
+
+const detailRouteName = computed(() => {
+  if (authStore.hasRole('administrador')) return 'dashboard-admin-communication-detail'
+  return 'dashboard-coordinator-communication-detail'
+})
 
 async function fetchCommunications() {
   isLoading.value = true
@@ -43,6 +51,19 @@ const priorityLabel: Record<string, string> = {
   high: 'Alta',
 }
 
+const requestTypeLabel: Record<string, string> = {
+  modify_project: 'Modificar proyecto',
+  postpone_project: 'Aplazar proyecto',
+  change_scope: 'Ajustar alcance',
+  other: 'Otro',
+}
+
+const communicationStatusLabel: Record<string, string> = {
+  pending: 'Pendiente',
+  approved: 'Aprobada',
+  changes_requested: 'Cambios solicitados',
+}
+
 onMounted(fetchCommunications)
 </script>
 
@@ -72,12 +93,20 @@ onMounted(fetchCommunications)
             </p>
           </div>
           <div class="badges">
+            <span class="badge badge-request">{{ requestTypeLabel[item.request_type] ?? item.request_type }}</span>
+            <span class="badge badge-status">{{ communicationStatusLabel[item.status] ?? item.status }}</span>
             <span class="badge badge-status">{{ statusLabel[item.project.status] }}</span>
             <span class="badge badge-priority">{{ priorityLabel[item.project.priority] }}</span>
           </div>
         </div>
 
         <p class="message">{{ item.message }}</p>
+
+        <div class="card-actions">
+          <RouterLink :to="{ name: detailRouteName, params: { id: item.id } }" class="detail-link">
+            Abrir solicitud
+          </RouterLink>
+        </div>
       </article>
     </div>
   </section>
@@ -182,6 +211,11 @@ onMounted(fetchCommunications)
   color: #1d4ed8;
 }
 
+.badge-request {
+  background: #f3e8ff;
+  color: #7c3aed;
+}
+
 .badge-priority {
   background: #fef3c7;
   color: #92400e;
@@ -193,10 +227,30 @@ onMounted(fetchCommunications)
   line-height: 1.6;
 }
 
+.card-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.9rem;
+}
+
+.detail-link {
+  text-decoration: none;
+  background: #111827;
+  color: white;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
 @media (max-width: 720px) {
   .panel-header,
   .request-top {
     flex-direction: column;
+  }
+
+  .card-actions {
+    justify-content: flex-start;
   }
 
   .badges {

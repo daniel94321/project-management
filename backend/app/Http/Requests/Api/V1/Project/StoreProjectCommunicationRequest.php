@@ -24,6 +24,7 @@ class StoreProjectCommunicationRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'request_type' => ['required', 'in:modify_project,postpone_project,change_scope,other'],
             'message' => ['required', 'string', 'max:1000'],
         ];
     }

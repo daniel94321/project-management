@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1;
 
+use App\Models\ProjectCommunication;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -19,6 +20,22 @@ class ProjectResource extends JsonResource
             'priority'    => $this->priority,
             'start_date'  => $this->start_date?->toDateString(),
             'end_date'    => $this->end_date?->toDateString(),
+            'student_request_pending' => $this->when(
+                $request->user() !== null,
+                fn () => ProjectCommunication::query()
+                    ->where('project_id', $this->id)
+                    ->where('user_id', $request->user()->id)
+                    ->where('status', ProjectCommunication::STATUS_PENDING)
+                    ->exists()
+            ),
+            'student_request_id' => $this->when(
+                $request->user() !== null,
+                fn () => ProjectCommunication::query()
+                    ->where('project_id', $this->id)
+                    ->where('user_id', $request->user()->id)
+                    ->latest()
+                    ->value('id')
+            ),
             'owner'       => $this->whenLoaded('owner', fn () => [
                 'id'   => $this->owner->id,
                 'name' => $this->owner->name,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import type { RouteLocationRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -9,11 +9,22 @@ import ToastContainer from '@/components/ToastContainer.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
-const { can, isAdmin } = usePermissions()
-const { notifications, unreadCount, markAllRead, markRead } = useNotifications()
+const { can } = usePermissions()
+const { notifications, unreadCount, markAllRead, markRead, refreshNotifications } = useNotifications()
 
 const isSidebarOpen    = ref(true)
 const showNotifications = ref(false)
+
+onMounted(() => {
+  refreshNotifications().catch(console.error)
+})
+
+watch(showNotifications, (open) => {
+  if (open) {
+    // Refresh each time the panel opens so users see the latest responses.
+    refreshNotifications().catch(console.error)
+  }
+})
 
 async function handleLogout() {
   await authStore.logout()
@@ -83,7 +94,7 @@ const roleNavItems = computed<NavItem[]>(() => {
   return items
 })
 
-function handleNotificationClick(id: number) {
+function handleNotificationClick(id: string) {
   markRead(id)
 }
 
@@ -139,8 +150,8 @@ const notifIcons: Record<string, string> = {
           <div class="user-name-row">
             <span class="user-name">{{ authStore.user?.name }}</span>
 
-            <!-- Campana de notificaciones — solo administrador -->
-            <div v-if="isAdmin" class="bell-wrap">
+            <!-- Campana de notificaciones -->
+            <div v-if="authStore.isAuthenticated" class="bell-wrap">
               <button class="bell-btn" @click="toggleNotifications" title="Notificaciones">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

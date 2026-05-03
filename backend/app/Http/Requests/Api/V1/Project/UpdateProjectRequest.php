@@ -16,7 +16,7 @@ class UpdateProjectRequest extends FormRequest
             return false;
         }
 
-        return $user->can('projects.update');
+        return $user->can('projects.update') || $user->hasRole('director') || $user->hasRole('evaluador');
     }
 
     public function rules(): array
