@@ -89,6 +89,7 @@ const showPasswordConfirm = ref(false)
 const form = ref({
   name: '',
   email: '',
+  phone: '',
   password: '',
   password_confirmation: '',
   status: 'active' as 'active' | 'inactive' | 'suspended',
@@ -101,7 +102,7 @@ function openCreateModal() {
   formErrors.value  = {}
   showPassword.value        = false
   showPasswordConfirm.value = false
-  form.value = { name: '', email: '', password: '', password_confirmation: '', status: 'active', roles: [] }
+  form.value = { name: '', email: '', phone: '', password: '', password_confirmation: '', status: 'active', roles: [] }
   showModal.value   = true
 }
 
@@ -114,6 +115,7 @@ function openEditModal(user: User) {
   form.value = {
     name:                  user.name,
     email:                 user.email,
+    phone:                 (user as any).phone || '',
     password:              '',
     password_confirmation: '',
     status:                user.status,
@@ -142,9 +144,10 @@ async function submitForm() {
   try {
     if (isEditing.value && editingUser.value) {
       // Actualizar usuario
-      const payload: UpdateUserPayload = {
+      const payload: any = {
         name:   form.value.name,
         email:  form.value.email,
+        phone:  form.value.phone || null,
         status: form.value.status,
         roles:  form.value.roles,
       }
@@ -155,9 +158,10 @@ async function submitForm() {
       await apiClient.put(`/users/${editingUser.value.id}`, payload)
     } else {
       // Crear usuario
-      const payload: CreateUserPayload = {
+      const payload: any = {
         name:                  form.value.name,
         email:                 form.value.email,
+        phone:                 form.value.phone || null,
         password:              form.value.password,
         password_confirmation: form.value.password_confirmation,
         status:                form.value.status,
@@ -376,6 +380,18 @@ onMounted(() => {
                 :class="{ 'input-error': formErrors.name }"
               />
               <p v-if="formErrors.name" class="error-msg">{{ formErrors.name[0] }}</p>
+            </div>
+
+            <!-- Teléfono -->
+            <div class="form-group">
+              <label>Teléfono</label>
+              <input
+                v-model="form.phone"
+                type="text"
+                placeholder="Ej: +52 555 123 4567"
+                :class="{ 'input-error': formErrors.phone }"
+              />
+              <p v-if="formErrors.phone" class="error-msg">{{ formErrors.phone[0] }}</p>
             </div>
 
             <!-- Email -->

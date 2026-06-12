@@ -1,10 +1,12 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Auth\AuthController;
+use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\Project\ProjectController;
 use App\Http\Controllers\Api\V1\Project\ProjectCommunicationController;
 use App\Http\Controllers\Api\V1\Role\RoleController;
+use App\Http\Controllers\Api\V1\Task\TaskController;
 use App\Http\Controllers\Api\V1\User\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -45,6 +47,9 @@ Route::prefix('v1')->group(function () {
         Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
         Route::patch('notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
         Route::patch('notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
+
+        // Dashboard
+        Route::get('dashboard/stats', [DashboardController::class, 'stats'])->name('dashboard.stats');
 
         // Roles (for forms)
         Route::get('roles', [RoleController::class, 'index'])->name('roles.index');
@@ -95,5 +100,23 @@ Route::prefix('v1')->group(function () {
 
         Route::post('projects/{project}/communications', [ProjectCommunicationController::class, 'store'])
             ->name('projects.communications.store');
+
+        // Task Management Routes
+        Route::middleware('permission:tasks.view')->group(function () {
+            Route::get('tasks', [TaskController::class, 'index'])->name('tasks.index');
+            Route::get('tasks/{task}', [TaskController::class, 'show'])->name('tasks.show');
+        });
+
+        Route::post('tasks', [TaskController::class, 'store'])
+            ->middleware('permission:tasks.create')
+            ->name('tasks.store');
+
+        Route::put('tasks/{task}', [TaskController::class, 'update'])
+            ->middleware('permission:tasks.update')
+            ->name('tasks.update');
+
+        Route::delete('tasks/{task}', [TaskController::class, 'destroy'])
+            ->middleware('permission:tasks.delete')
+            ->name('tasks.destroy');
     });
 });

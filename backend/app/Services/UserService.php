@@ -63,6 +63,7 @@ class UserService
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
+            'phone' => $data['phone'] ?? null,
             'password' => Hash::make($data['password']),
             'status' => $data['status'] ?? 'active',
         ]);
@@ -85,6 +86,7 @@ class UserService
         $updateData = array_filter([
             'name' => $data['name'] ?? null,
             'email' => $data['email'] ?? null,
+            'phone' => $data['phone'] ?? null,
             'status' => $data['status'] ?? null,
         ], fn($value) => $value !== null);
 

@@ -139,6 +139,11 @@ const notifIcons: Record<string, string> = {
           <span v-if="isSidebarOpen" class="nav-text">Proyectos</span>
         </RouterLink>
 
+        <RouterLink v-if="can('tasks.view')" :to="{ name: 'tasks' }" class="nav-item">
+          <span class="nav-icon">&#128203;</span>
+          <span v-if="isSidebarOpen" class="nav-text">Tareas</span>
+        </RouterLink>
+
         <RouterLink v-if="can('users.view')" :to="{ name: 'users' }" class="nav-item">
           <span class="nav-icon">&#128100;</span>
           <span v-if="isSidebarOpen" class="nav-text">Usuarios</span>

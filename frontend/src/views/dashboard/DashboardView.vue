@@ -1,11 +1,39 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import { useAuthStore } from '@/stores/auth'
 import { usePermissions } from '@/composables/usePermissions'
+import apiClient from '@/api/axios'
 
 const authStore = useAuthStore()
 const { isAdmin } = usePermissions()
+
+const stats = ref<Record<string, number>>({
+  total_users: 0,
+  active_users: 0,
+  total_projects: 0,
+  active_projects: 0,
+  completed_projects: 0,
+  total_tasks: 0,
+  pending_tasks: 0,
+  in_progress_tasks: 0,
+  completed_tasks: 0,
+  pending_communications: 0,
+  my_projects: 0,
+  my_tasks: 0,
+})
+const isLoadingStats = ref(true)
+
+async function fetchStats() {
+  try {
+    const res = await apiClient.get('/dashboard/stats')
+    stats.value = res.data.data
+  } catch {
+    // Silently fail
+  } finally {
+    isLoadingStats.value = false
+  }
+}
 
 const permissionLabels: Record<string, string> = {
   'users.view': 'Ver usuarios',
@@ -27,6 +55,15 @@ const permissionLabels: Record<string, string> = {
   'tasks.update': 'Editar tareas',
   'tasks.delete': 'Eliminar tareas',
 }
+
+const statCards = computed(() => [
+  { icon: '👥', value: stats.value.total_users, label: 'Usuarios', color: 'bg-blue-50 text-blue-600' },
+  { icon: '📁', value: stats.value.total_projects, label: 'Proyectos', color: 'bg-purple-50 text-purple-600' },
+  { icon: '✅', value: stats.value.total_tasks, label: 'Tareas', color: 'bg-green-50 text-green-600' },
+  { icon: '📋', value: stats.value.pending_communications, label: 'Solicitudes pendientes', color: 'bg-amber-50 text-amber-600' },
+  { icon: '📌', value: stats.value.my_projects, label: 'Mis proyectos', color: 'bg-indigo-50 text-indigo-600' },
+  { icon: '📝', value: stats.value.my_tasks, label: 'Mis tareas', color: 'bg-teal-50 text-teal-600' },
+])
 
 const roleViews = [
   {
@@ -73,96 +110,91 @@ function formatRoleLabel(role: string): string {
 function formatPermissionLabel(permission: string): string {
   return permissionLabels[permission] || permission.replace(/\./g, ' ')
 }
+
+onMounted(fetchStats)
 </script>
 
 <template>
   <DashboardLayout>
     <template #header>
-      <h1>Panel principal</h1>
+      <h1 class="text-2xl font-bold text-gray-800">Panel principal</h1>
     </template>
 
-    <div class="dashboard-content">
-      <div class="welcome-card">
-        <h2>Bienvenido, {{ authStore.user?.name }}.</h2>
-        <p>
+    <div class="space-y-6">
+      <!-- Welcome card -->
+      <div class="bg-gradient-to-r from-primary-500 to-primary-700 text-white p-8 rounded-xl shadow-md">
+        <h2 class="text-2xl font-bold mb-2">Bienvenido, {{ authStore.user?.name }}.</h2>
+        <p class="opacity-90">
           Tu acceso actual es
-          <strong>{{ authStore.roles.map(formatRoleLabel).join(', ') || 'Sin rol asignado' }}</strong>
+          <strong class="font-semibold">{{ authStore.roles.map(formatRoleLabel).join(', ') || 'Sin rol asignado' }}</strong>
         </p>
       </div>
 
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-icon">&#128100;</div>
-          <div class="stat-info">
-            <span class="stat-value">-</span>
-            <span class="stat-label">Usuarios</span>
+      <!-- Stats grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div v-for="stat in statCards" :key="stat.label"
+          class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4 transition-shadow hover:shadow-md">
+          <div class="text-2xl w-14 h-14 rounded-xl flex items-center justify-center shrink-0" :class="stat.color">
+            {{ stat.icon }}
           </div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-icon">&#128193;</div>
-          <div class="stat-info">
-            <span class="stat-value">-</span>
-            <span class="stat-label">Proyectos</span>
-          </div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-icon">&#9745;</div>
-          <div class="stat-info">
-            <span class="stat-value">-</span>
-            <span class="stat-label">Tareas</span>
-          </div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-icon">&#128101;</div>
-          <div class="stat-info">
-            <span class="stat-value">-</span>
-            <span class="stat-label">Equipos</span>
+          <div>
+            <div v-if="isLoadingStats" class="h-7 w-16 bg-gray-200 rounded animate-pulse mb-1"></div>
+            <span v-else class="text-2xl font-bold text-gray-800">{{ stat.value }}</span>
+            <span class="block text-sm text-gray-500">{{ stat.label }}</span>
           </div>
         </div>
       </div>
 
-      <div class="info-cards">
-        <div class="info-card">
-          <h3>Lo que puedes hacer</h3>
-          <p class="card-note">Te mostramos las acciones disponibles con nombres claros.</p>
-          <div class="permissions-list">
+      <!-- Info cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <!-- Permissions -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <h3 class="text-base font-semibold text-gray-800 mb-1">Lo que puedes hacer</h3>
+          <p class="text-sm text-gray-500 mb-3">Acciones disponibles según tus permisos.</p>
+          <div class="flex flex-wrap gap-2">
             <span
               v-for="permission in authStore.permissions"
               :key="permission"
-              class="permission-badge"
+              class="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-medium"
             >
               {{ formatPermissionLabel(permission) }}
             </span>
-            <span v-if="isAdmin" class="permission-badge super">
+            <span v-if="isAdmin" class="bg-gradient-to-r from-primary-500 to-primary-700 text-white px-3 py-1 rounded-full text-xs font-medium">
               Acceso completo
             </span>
           </div>
         </div>
 
-        <div class="info-card" v-if="visibleRoleViews.length > 0">
-          <h3>Espacios por rol</h3>
-          <p class="card-note">Abre una vista distinta según el perfil con el que trabajes.</p>
-          <div class="role-links">
+        <!-- Role spaces -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100" v-if="visibleRoleViews.length > 0">
+          <h3 class="text-base font-semibold text-gray-800 mb-1">Espacios por rol</h3>
+          <p class="text-sm text-gray-500 mb-3">Accede a vistas específicas según tu perfil.</p>
+          <div class="space-y-2">
             <RouterLink
               v-for="view in visibleRoleViews"
               :key="view.role"
               :to="view.route"
-              class="role-link"
+              class="block p-3 rounded-xl bg-gray-50 border border-gray-200 hover:border-primary-300 hover:bg-primary-50 transition-colors no-underline"
             >
-              <strong>{{ view.title }}</strong>
-              <span>{{ view.description }}</span>
+              <strong class="text-sm text-gray-800">{{ view.title }}</strong>
+              <p class="text-xs text-gray-500 mt-0.5">{{ view.description }}</p>
             </RouterLink>
           </div>
         </div>
 
-        <div class="info-card" v-if="isAdmin">
-          <h3>Acciones rápidas</h3>
-          <div class="quick-actions">
-            <RouterLink to="/users" class="action-btn">
+        <!-- Quick actions -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100" v-if="isAdmin">
+          <h3 class="text-base font-semibold text-gray-800 mb-1">Acciones rápidas</h3>
+          <p class="text-sm text-gray-500 mb-3">Atajos a las tareas más comunes.</p>
+          <div class="flex flex-wrap gap-2">
+            <RouterLink to="/users" class="inline-block bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors no-underline">
               Gestionar usuarios
+            </RouterLink>
+            <RouterLink to="/projects" class="inline-block bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors no-underline">
+              Ver proyectos
+            </RouterLink>
+            <RouterLink to="/tasks" class="inline-block bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors no-underline">
+              Ver tareas
             </RouterLink>
           </div>
         </div>
@@ -170,162 +202,3 @@ function formatPermissionLabel(permission: string): string {
     </div>
   </DashboardLayout>
 </template>
-
-<style scoped>
-.dashboard-content {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.welcome-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 2rem;
-  border-radius: 12px;
-}
-
-.welcome-card h2 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.5rem;
-}
-
-.welcome-card p {
-  margin: 0;
-  opacity: 0.9;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-}
-
-.stat-card {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.stat-icon {
-  font-size: 2rem;
-  width: 60px;
-  height: 60px;
-  background: #edf2f7;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.stat-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.stat-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #1a202c;
-}
-
-.stat-label {
-  font-size: 0.875rem;
-  color: #718096;
-}
-
-.info-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1rem;
-}
-
-.info-card {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.info-card h3 {
-  margin: 0 0 1rem 0;
-  font-size: 1rem;
-  color: #1a202c;
-}
-
-.card-note {
-  margin: -0.5rem 0 0.75rem;
-  color: #64748b;
-  font-size: 0.875rem;
-}
-
-.permissions-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.permission-badge {
-  background: #edf2f7;
-  color: #4a5568;
-  padding: 0.25rem 0.75rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.permission-badge.super {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-.role-links {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.role-link {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  padding: 0.9rem 1rem;
-  border-radius: 12px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  text-decoration: none;
-  color: #1a202c;
-}
-
-.role-link strong {
-  font-size: 0.95rem;
-}
-
-.role-link span {
-  color: #64748b;
-  font-size: 0.85rem;
-}
-
-.quick-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.action-btn {
-  background: #667eea;
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  text-decoration: none;
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: background 0.2s;
-}
-
-.action-btn:hover {
-  background: #5a67d8;
-}
-</style>

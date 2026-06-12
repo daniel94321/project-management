@@ -228,6 +228,16 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/tasks',
+    name: 'tasks',
+    component: () => import('@/views/tasks/TasksView.vue'),
+    meta: {
+      requiresAuth: true,
+      permission: 'tasks.view',
+      title: 'Tareas',
+    },
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/views/NotFoundView.vue'),

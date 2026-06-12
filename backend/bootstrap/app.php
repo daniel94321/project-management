@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // API middleware configuration
         $middleware->api(prepend: [
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+            \Illuminate\Session\Middleware\StartSession::class,
         ]);
 
         // Stateful API for Sanctum SPA authentication
