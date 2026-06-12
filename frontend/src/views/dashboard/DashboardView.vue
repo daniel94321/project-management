@@ -117,15 +117,15 @@ onMounted(fetchStats)
 <template>
   <DashboardLayout>
     <template #header>
-      <h1 class="text-2xl font-bold text-gray-800">Panel principal</h1>
+      <h1 class="text-2xl font-bold text-gray-800">Dashboard</h1>
     </template>
 
     <div class="space-y-6">
       <!-- Welcome card -->
       <div class="bg-gradient-to-r from-primary-500 to-primary-700 text-white p-8 rounded-xl shadow-md">
-        <h2 class="text-2xl font-bold mb-2">Bienvenido, {{ authStore.user?.name }}.</h2>
+        <h2 class="text-2xl font-bold mb-2">¡Hola de nuevo, {{ authStore.user?.name }}!</h2>
         <p class="opacity-90">
-          Tu acceso actual es
+          Bienvenido a tu panel de control. Tu rol actual es
           <strong class="font-semibold">{{ authStore.roles.map(formatRoleLabel).join(', ') || 'Sin rol asignado' }}</strong>
         </p>
       </div>
@@ -149,8 +149,8 @@ onMounted(fetchStats)
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         <!-- Permissions -->
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h3 class="text-base font-semibold text-gray-800 mb-1">Lo que puedes hacer</h3>
-          <p class="text-sm text-gray-500 mb-3">Acciones disponibles según tus permisos.</p>
+          <h3 class="text-base font-semibold text-gray-800 mb-1">Tus permisos</h3>
+          <p class="text-sm text-gray-500 mb-3">Acciones que puedes realizar dentro del sistema.</p>
           <div class="flex flex-wrap gap-2">
             <span
               v-for="permission in authStore.permissions"
@@ -167,8 +167,8 @@ onMounted(fetchStats)
 
         <!-- Role spaces -->
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100" v-if="visibleRoleViews.length > 0">
-          <h3 class="text-base font-semibold text-gray-800 mb-1">Espacios por rol</h3>
-          <p class="text-sm text-gray-500 mb-3">Accede a vistas específicas según tu perfil.</p>
+          <h3 class="text-base font-semibold text-gray-800 mb-1">Módulos del sistema</h3>
+          <p class="text-sm text-gray-500 mb-3">Accede a las secciones habilitadas para tu perfil.</p>
           <div class="space-y-2">
             <RouterLink
               v-for="view in visibleRoleViews"
@@ -184,8 +184,8 @@ onMounted(fetchStats)
 
         <!-- Quick actions -->
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100" v-if="isAdmin">
-          <h3 class="text-base font-semibold text-gray-800 mb-1">Acciones rápidas</h3>
-          <p class="text-sm text-gray-500 mb-3">Atajos a las tareas más comunes.</p>
+          <h3 class="text-base font-semibold text-gray-800 mb-1">Acceso directo</h3>
+          <p class="text-sm text-gray-500 mb-3">Navegación rápida a las secciones principales.</p>
           <div class="flex flex-wrap gap-2">
             <RouterLink to="/users" class="inline-block bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors no-underline">
               Gestionar usuarios
